@@ -43,7 +43,10 @@ Windows програм + Chrome өргөтгөл. Анх PMP шалгалтад 
 ## Утасны апп (`mobile/`, iOS + Android)
 
 Expo SDK 58 (React Native) — **`mobile/AGENTS.md`-г заавал уншина** (Expo-ийн API SDK бүрт өөрчлөгддөг, санах ойгоор бүү бич).
-- Таб: Хөтөч (апп доторх браузер) · PDF · Зураг (камер/OCR) · Миний үгс · Тохиргоо.
+- Таб: Хөтөч (апп доторх браузер) · Видео · PDF · Зураг (камер/OCR) · Миний үгс · Тохиргоо.
+- **Видео** (`src/web/video.ts`): YouTube холбоос → m.youtube.com; тоглуулагчийн `/api/timedtext` хүсэлтийг fetch/XHR hook-оор барьж бүх хадмалыг урьдчилан орчуулна (YouTube шууд татахад токен шаарддаг тул барих нь цорын ганц арга; headless/автомат браузерт YouTube хоосон буцаадаг). Олдохгүй бол дэлгэц дээрх хадмалыг шууд орчуулна.
+- **Safari өргөтгөл** (`targets/safari/`, `@bacons/apple-targets`): `assets/background.js` нь `scripts/build-safari.mjs`-ээр аппын translator.ts-ээс бүтнэ (store → `src/safari/store-shim.ts`); pagetr.js хуулагдана. Түлхүүр өргөтгөлийн цэсэнд тусдаа.
+- **iPhone build**: `.github/workflows/iphone-ipa.yml` — `mobile-vX.Y.Z` tag push → гарын үсэггүй .ipa (prerelease) → AltStore/SideStore-оор суулгана.
 - **Хөтөч нь `extension/pagetr.js`-ийг өөрчлөлтгүй ашиглана**: `scripts/sync-web.mjs` → `src/web/extension.generated.ts` (`npm start`/`typecheck` бүрд). `src/web/inject.ts`-ийн `bridgeJs` нь `chrome.runtime/storage`-ийг `ReactNativeWebView.postMessage` руу дамжуулна. pagetr.js-д `window.__hmNoPill` — утсанд булангийн товч гаргахгүй.
 - Python сервер утсанд байхгүй → орчуулгын гинж `src/lib/translator.ts` (hadmal_server.py-тай ижил логик; засвар хийвэл хоёуланг нь).
 - Түлхүүрүүд `expo-secure-store`-д (Keychain/Keystore); тохиргоо, үгс, кэш `Paths.document`-ийн JSON файлд.

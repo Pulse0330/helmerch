@@ -57,7 +57,7 @@ if (-not (Test-Path "$mob\node_modules")) { Write-Host "      (mobile\node_modul
   if ($LASTEXITCODE -eq 0) { Ok "lint" } else { Bad "lint — 'cd mobile; npx expo lint'" }
   if ($Chrome) {
     $tmp = Join-Path $env:TEMP ("hm-mob-" + [guid]::NewGuid().ToString("N")); New-Item -ItemType Directory $tmp | Out-Null
-    foreach ($t in "bridge_page", "pdf_page") {
+    foreach ($t in "bridge_page", "pdf_page", "video_page") {
       npx tsx "tests\$t.ts" "$tmp\$t.html" 2>&1 | Out-Null
       $u = "file:///" + ("$tmp\$t.html" -replace '\\', '/')
       $out = & $Chrome --headless=new --disable-gpu --no-first-run --user-data-dir="$tmp\prof" --virtual-time-budget=20000 --dump-dom $u 2>$null | Out-String
@@ -66,6 +66,9 @@ if (-not (Test-Path "$mob\node_modules")) { Write-Host "      (mobile\node_modul
     }
     Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
   }
+  # Safari өргөтгөлийн background (= аппын translator.ts) — жинхэнэ Google орчуулгаар (интернэт хэрэгтэй)
+  node tests\safari_background.mjs 2>&1 | Out-Null
+  if ($LASTEXITCODE -eq 0) { Ok "Safari өргөтгөл + орчуулгын гинж (Google)" } else { Bad "Safari өргөтгөл — 'cd mobile; node tests\safari_background.mjs'" }
   Pop-Location
 }
 

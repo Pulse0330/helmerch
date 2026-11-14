@@ -25,9 +25,11 @@ export async function translateQuiet(msg: Parameters<typeof translate>[0], tries
 
 export type PageEvent = { kind: "sel"; text: string } | { kind: "word"; word: string } | { kind: string; [k: string]: unknown };
 
-export function useBridge(ref: RefObject<WebViewRef | null>, onEvent?: (e: PageEvent) => void) {
+// sync=false: тохиргооны өөрчлөлтийг энэ хуудсанд дамжуулахгүй (жишээ нь видеоны дэлгэц өөрийн тохиргоотой)
+export function useBridge(ref: RefObject<WebViewRef | null>, onEvent?: (e: PageEvent) => void, sync = true) {
   // тохиргоо өөрчлөгдөхөд нээлттэй хуудсанд шууд мэдэгдэнэ (дахин ачаалахгүй)
   useEffect(() => {
+    if (!sync) return;
     let prev = pageStore(settings.get());
     return settings.subscribe(() => {
       const next = pageStore(settings.get()), diff: Record<string, unknown> = {};
@@ -37,7 +39,7 @@ export function useBridge(ref: RefObject<WebViewRef | null>, onEvent?: (e: PageE
       prev = next;
       if (Object.keys(diff).length) ref.current?.injectJavaScript(toPage({ kind: "store", data: diff }));
     });
-  }, [ref]);
+  }, [ref, sync]);
 
   return useCallback(async (e: WebViewMessageEvent) => {
     let m: any;

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Хэлмэрч",
     "slug": "helmerch",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "helmerch",
@@ -39,7 +39,8 @@
           "photosPermission": "Зургийн сангаас зураг сонгож орчуулахад хэрэгтэй."
         }
       ],
-      "expo-font"
+      "expo-font",
+      "@bacons/apple-targets"
     ],
     "experiments": {
       "typedRoutes": true

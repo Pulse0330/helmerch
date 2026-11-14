@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<header><img src="images/icon-48.png" alt=""><b>Хэлмэрч</b></header>
+
+<div class="lbl">Вэб хуудсыг орчуулах</div>
+<div class="seg" id="mode">
+  <button data-m="off">Эх</button><button data-m="bi">2 хэл</button><button data-m="mo">Монгол</button>
+</div>
+<label class="row"><input type="checkbox" id="exam"> <span>📝 Шалгалтын горим — асуулт, хариулт, тайлбар бүгдийг</span></label>
+<label class="row"><input type="checkbox" id="uitr"> <span>Цэс, товчийг ч орчуулах</span></label>
+<p class="hint">Текстийг удаан дарж сонгоход доод хэсэгт орчуулга гарна.</p>
+
+<details id="keys">
+  <summary>AI түлхүүрүүд (сайн чанарын орчуулга)</summary>
+  <p class="hint">Хэлмэрч апп-ын Тохиргоонд байгаа заавраар авна. Энд тусад нь оруулна.</p>
+  <input id="gemini" type="password" placeholder="Gemini түлхүүр (AIza…)" autocomplete="off">
+  <input id="github" type="password" placeholder="GitHub токен (github_pat_…)" autocomplete="off">
+  <button id="save" class="primary">Хадгалах</button>
+  <span id="saved" class="hint"></span>
+</details>
+<script src="popup.js"></script>
+</body>
+</html>

@@ -38,6 +38,11 @@ jobs:
       - name: Хамаарлууд
         run: npm ci
 
+      - name: Safari өргөтгөл, pagetr.js бэлдэх
+        run: |
+          node scripts/sync-web.mjs
+          node scripts/build-safari.mjs
+
       - name: iOS төсөл үүсгэх (expo prebuild + CocoaPods)
         env:
           CI: "1"

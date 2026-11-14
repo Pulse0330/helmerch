@@ -114,6 +114,22 @@ export default function SettingsScreen() {
           value={s.uiTr} onChange={(v) => settings.set({ uiTr: v })} />
       </Card>
 
+      <Text style={[styles.h2, { color: t.muted }]}>SAFARI-Д ОРЧУУЛАХ</Text>
+      <Card style={{ gap: 6 }}>
+        {[
+          "iPhone-ий Тохиргоо → Апп → Safari → Өргөтгөлүүд (Extensions) → Хэлмэрч → асаана.",
+          "Мөн тэнд «Бүх вэб сайт» (All Websites) → Зөвшөөрөх.",
+          "Safari-д хаягийн мөрний «аА» (эсвэл 🧩) товч → Хэлмэрч → 2 хэл / Монгол.",
+          "Сайн чанарын орчуулгад өргөтгөлийн цэсний «AI түлхүүрүүд»-д түлхүүрээ тусад нь оруулна.",
+        ].map((s, i) => (
+          <View key={i} style={{ flexDirection: "row", gap: 8 }}>
+            <Text style={[styles.n, { backgroundColor: t.accent }]}>{i + 1}</Text>
+            <Text style={{ flex: 1, color: t.text, lineHeight: 20 }}>{s}</Text>
+          </View>
+        ))}
+        <Text style={{ color: t.muted, fontSize: 12.5 }}>Текстийг удаан дарж сонгоход доод хэсэгт орчуулга гарна. (Expo Go-д биш, суулгасан Хэлмэрч апп дээр ажиллана.)</Text>
+      </Card>
+
       <Text style={{ color: t.muted, textAlign: "center", fontSize: 12, marginTop: 8 }}>
         Хэлмэрч {Constants.expoConfig?.version} · хуудас орчуулагч v{EXTENSION_VERSION}
       </Text>

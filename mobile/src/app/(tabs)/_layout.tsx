@@ -5,6 +5,7 @@ import { useTheme } from "@/lib/theme";
 type Icon = keyof typeof Ionicons.glyphMap;
 const TABS: [string, string, Icon, boolean][] = [
   ["index", "Хөтөч", "globe-outline", false],
+  ["video", "Видео", "play-circle-outline", true],
   ["pdf", "PDF", "document-text-outline", true],
   ["camera", "Зураг", "camera-outline", true],
   ["words", "Миний үгс", "book-outline", true],
