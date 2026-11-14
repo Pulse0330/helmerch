@@ -48,7 +48,7 @@ export function useBridge(ref: RefObject<WebViewRef | null>, onEvent?: (e: PageE
       const msg = m.msg || {};
       let data: unknown = {};
       if (msg.type === "translate") {
-        data = await translateQuiet({ kind: msg.kind, texts: msg.texts || [], quality: msg.quality, context: msg.context, remember: msg.remember, fast: msg.fast });
+        data = await translateQuiet({ kind: msg.kind, texts: msg.texts || [], quality: msg.quality, context: msg.context, remember: msg.remember, fast: msg.fast, prefer: msg.prefer });
       }
       ref.current?.injectJavaScript(toPage({ kind: "resp", id: m.id, data }));
     } else if (m?.kind === "set") {

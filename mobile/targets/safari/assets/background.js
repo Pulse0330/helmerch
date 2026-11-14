@@ -324,11 +324,12 @@ Translate each item of this JSON array into Mongolian. Return ONLY a JSON array 
     throw new Error("Copilot хариу өгсөнгүй");
   }
   var hasAI = () => !!(keys.get().gemini || keys.get().github);
-  async function quality(lines, context, proTerms, lite = false) {
+  async function quality(lines, context, proTerms, lite = false, prefer) {
     const system = PRO_PROMPT + (proTerms ? PRO_TERMS_RULE : "");
     const chain = [];
     if (keys.get().github) chain.push(["Copilot", copilot]);
     if (keys.get().gemini) chain.push(["Gemini", gemini]);
+    if (prefer === "gemini" && chain.length === 2 && chain[0][0] === "Copilot") chain.reverse();
     const errors = [];
     let best = null;
     for (const [name, fn] of chain) {
@@ -392,7 +393,7 @@ Translate each item of this JSON array into Mongolian. Return ONLY a JSON array 
         let mns = null, tier2 = "google", cacheable = false;
         if (wantQ) {
           try {
-            mns = await quality(src, ctx, s.proTerms);
+            mns = await quality(src, ctx, s.proTerms, false, req.prefer);
             tier2 = "pro";
             cacheable = true;
           } catch {

@@ -245,11 +245,12 @@ async function copilot(lines: string[], context: string[] | null, system: string
 // ---------------------------------------------------------------- сайн чанарын орчуулга: Copilot → Gemini
 export const hasAI = () => !!(keys.get().gemini || keys.get().github);
 
-async function quality(lines: string[], context: string[] | null, proTerms: boolean, lite = false): Promise<string[]> {
+async function quality(lines: string[], context: string[] | null, proTerms: boolean, lite = false, prefer?: string): Promise<string[]> {
   const system = PRO_PROMPT + (proTerms ? PRO_TERMS_RULE : "");
   const chain: [string, typeof copilot][] = [];
   if (keys.get().github) chain.push(["Copilot", copilot]);
   if (keys.get().gemini) chain.push(["Gemini", gemini]);
+  if (prefer === "gemini" && chain.length === 2 && chain[0][0] === "Copilot") chain.reverse();   // видео хадмал гэх мэт: Gemini эхэлж
   const errors: string[] = [];
   let best: [number, string[]] | null = null;
   for (const [name, fn] of chain) {
@@ -279,7 +280,7 @@ export type TrResult = { results?: { mn: string; alts?: Alt[] }[]; tier?: "pro" 
 const norm = (t: string) => String(t).replace(/\s+/g, " ").trim().slice(0, 5000);
 
 // fast: AI-г алгасаж шууд Google (видео хадмал гэх мэт хоцрох ёсгүй үед — Gemini үнэгүй эрх хүсэлт бүрийн хооронд 4 сек хүлээлгэдэг)
-export async function translate(req: { kind?: string; texts: string[]; quality?: boolean; context?: string; remember?: boolean; fast?: boolean }): Promise<TrResult> {
+export async function translate(req: { kind?: string; texts: string[]; quality?: boolean; context?: string; remember?: boolean; fast?: boolean; prefer?: string }): Promise<TrResult> {
   const kind = req.kind || "text";
   const s = settings.get();
   const wantQ = !req.fast && !!req.quality && s.quality && hasAI();
@@ -312,7 +313,7 @@ export async function translate(req: { kind?: string; texts: string[]; quality?:
       const idx = todo.slice(k, k + 20), src = idx.map((i) => texts[i]);
       let mns: string[] | null = null, tier: "pro" | "fast" | "google" = "google", cacheable = false;
       if (wantQ) {
-        try { mns = await quality(src, ctx, s.proTerms); tier = "pro"; cacheable = true; } catch { /* хурдан шат руу */ }
+        try { mns = await quality(src, ctx, s.proTerms, false, req.prefer); tier = "pro"; cacheable = true; } catch { /* хурдан шат руу */ }
       }
       if (!mns && !req.fast && hasAI() && s.quality) {
         try { mns = await quality(src, ctx, s.proTerms, true); tier = wantQ ? "pro" : "fast"; cacheable = true; } catch { /* Google руу */ }

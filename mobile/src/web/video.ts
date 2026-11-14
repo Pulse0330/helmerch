@@ -97,39 +97,64 @@ export const VIDEO_BEFORE_JS = `(function(){
 
   // --- бүх хадмалыг орчуулах: тоглож буй хэсгээс эхэлж, эхлээд хурдан, дараа нь AI
   // quality=false → fast: шууд Google (~0.3 сек). AI (quality) нь зөвхөн урьдчилан татсан хадмалыг ар талд сайжруулна.
+  // quality=false → fast: шууд Google (~0.3 сек). quality=true → AI, Gemini эхэлж (prefer).
   function send(texts, quality){
     return new Promise(function(res){
-      chrome.runtime.sendMessage({ type: "translate", kind: "text", texts: texts, quality: quality, fast: !quality,
+      chrome.runtime.sendMessage({ type: "translate", kind: "text", texts: texts, quality: quality, fast: !quality, prefer: "gemini",
         context: "Video subtitles: " + document.title.slice(0, 100) }, function(r){ res(r || {}); });
     });
   }
-  // Бүх хадмалыг ЭХЛЭЭД орчуулж дуусгаад үзүүлнэ: видеог түр зогсоож, явцыг харуулж, дуусмагц үргэлжлүүлнэ
-  // (тоглуулж байх үед хоцрохгүй). Дараа нь AI-аар ар талд сайжруулна.
-  async function translateAll(){
-    var c = V.cues, N = 60;
-    var v = mainVideo(), wasPlaying = v && !v.paused;
-    var holdPlay = function(){ var x = mainVideo(); if (V.preparing && x && !x.paused) x.pause(); };
-    V.preparing = true;
-    if (v) { v.pause(); v.addEventListener("play", holdPlay); }
-    var uniq = [], seen = {};
-    c.forEach(function(x){ if (!seen[x.t]) { seen[x.t] = 1; uniq.push(x.t); } });
-    for (var i = 0; i < uniq.length; i += N) {
-      post({ kind: "vstatus", text: "Хадмал бэлдэж байна… " + Math.round(100 * i / uniq.length) + "% (" + uniq.length + " мөр)" });
-      var part = uniq.slice(i, i + N), r = {};
-      for (var a = 0; a < 3 && !r.results; a++) { r = await send(part, false); if (!r.results) await new Promise(function(z){ setTimeout(z, 1500); }); }
-      (r.results || []).forEach(function(x, j){ if (x.mn) V.mn[part[j]] = x.mn; });
-      if (V.fill) V.fill();
+  // тоглож буй хэсгээс (гүйлгэсэн бол шинэ байрлалаас) урагш, тухайн шатанд орчуулагдаагүй дараагийн мөрүүд
+  function nextChunk(done, n){
+    var v = mainVideo(), now = v ? v.currentTime : 0, c = V.cues, out = [], seen = {};
+    var start = c.findIndex(function(x){ return x.e >= now; });
+    if (start < 0) start = 0;
+    for (var k = 0; k < c.length && out.length < n; k++) {
+      var tx = c[(start + k) % c.length].t;
+      if (!done[tx] && !seen[tx]) { seen[tx] = 1; out.push(tx); }
     }
+    return out;
+  }
+  // 1) Google-ээр маш хурдан: видео зогсохгүй, тоглож буй хэсгээс эхэлж орчуулна (эхний мөрүүд ~0.5 сек).
+  // 2) Хооронд нь Gemini-ээр (мэргэжлийн) мөн тоглож буй хэсгээс урагш орчуулж, бэлэн болсон мөрийг шууд сольно.
+  async function translateAll(){
     V.preparing = false;
-    if (v) { v.removeEventListener("play", holdPlay); if (wasPlaying || v.currentTime > 0) v.play().catch(function(){}); }
-    post({ kind: "vstatus", text: "" });
-    post({ kind: "vready", count: uniq.length });
-    // AI-аар сайжруулах (ар талд, түлхүүр байвал) — бэлэн болсон мөрийг шууд сольно
-    for (var k = 0; k < uniq.length; k += 30) {
-      var q = uniq.slice(k, k + 30), rq = await send(q, true);
-      if (!rq.results || rq.ai === false) break;
-      rq.results.forEach(function(x, j){ if (x.mn) V.mn[q[j]] = x.mn; });
-      if (V.fill) V.fill();                               // бүтэн дэлгэцийн track-ийн мөрүүдийг ч сольно
+    var total = {};
+    V.cues.forEach(function(x){ total[x.t] = 1; });
+    var count = Object.keys(total).length, fastDone = {}, aiDone = {}, fails = 0;
+    google();
+    gemini();
+    async function google(){
+      for (;;) {
+        var part = nextChunk(fastDone, 40);
+        if (!part.length) break;
+        var r = {};
+        for (var a = 0; a < 3 && !r.results; a++) { r = await send(part, false); if (!r.results) await new Promise(function(z){ setTimeout(z, 1500); }); }
+        part.forEach(function(tx, j){
+          fastDone[tx] = 1;
+          var mn = r.results && r.results[j] && r.results[j].mn;
+          if (mn && !aiDone[tx]) V.mn[tx] = mn;                // Gemini-ийнх аль хэдийн байвал дарж бичихгүй
+        });
+        if (V.fill) V.fill();
+      }
+      post({ kind: "vready", count: count });
+    }
+    async function gemini(){
+      await new Promise(function(z){ setTimeout(z, 600); });   // эхний Google мөрүүд түрүүлж гарна
+      var told = false;
+      for (;;) {
+        var q = nextChunk(aiDone, 25);
+        if (!q.length) break;
+        var rq = await send(q, true);
+        if (!rq.results || rq.ai === false) {                   // түлхүүргүй эсвэл хязгаар дүүрсэн — Google хэвээр
+          if (rq.ai === false || ++fails > 3) break;
+          await new Promise(function(z){ setTimeout(z, 5000); });
+          continue;
+        }
+        q.forEach(function(tx, j){ aiDone[tx] = 1; var mn = rq.results[j] && rq.results[j].mn; if (mn) V.mn[tx] = mn; });
+        if (V.fill) V.fill();                                   // track-ийн мөрүүдийг ч сольно
+        if (!told) { told = true; post({ kind: "vstatus", text: "✨ Gemini орчуулга орж байна" }); setTimeout(function(){ post({ kind: "vstatus", text: "" }); }, 2500); }
+      }
     }
   }
 
