@@ -31,7 +31,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24          # npm 11 (lock файлыг npm 11 үүсгэсэн; npm 10 peer-ийг өөрөөр шийддэг)
           cache: npm
           cache-dependency-path: mobile/package-lock.json
 
