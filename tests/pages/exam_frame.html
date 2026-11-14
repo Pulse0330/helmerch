@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<script>window.HM_STORE = { examMode: true };</script>
+<script src="stub.js"></script>
+</head><body>
+<p id="fq">Which document formally authorizes the project inside the frame?</p>
+<script src="../../extension/pagetr.js"></script>
+<script>
+// үр дүнгээ эх хуудсанд мэдэгдэнэ (iframe-ийн агуулга dump-д ордоггүй)
+setTimeout(() => parent.postMessage("fq=" + (tr("fq") || "-").slice(0, 8) + " pill=" + !!document.querySelector("hm-pill"), "*"), 4000);
+</script>
+</body></html>

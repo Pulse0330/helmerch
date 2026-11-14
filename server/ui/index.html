@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Хэлмэрч</title>
+<link rel="icon" href="/ui/logo.svg">
+<style>
+:root {
+  --bg: #f4f5f8; --card: #ffffff; --text: #1b1f2a; --muted: #6b7385; --line: #e6e8ef;
+  --accent: #1565c0; --accent-soft: #e3edfb; --ok: #1f9d55; --warn: #d98a00; --bad: #c0392b;
+  --field: #f6f7fa; --shadow: 0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.06);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #16181d; --card: #1f2229; --text: #eceef3; --muted: #9aa2b2; --line: #2d313b;
+          --accent: #5c9bff; --accent-soft: #1c2a44; --field: #272a33; --shadow: none; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
+body { min-height: 100vh; display: flex; flex-direction: column; }
+main { flex: 1; padding: 0 16px 12px; max-width: 640px; width: 100%; margin: 0 auto; }
+
+header { display: flex; align-items: center; gap: 12px; padding: 18px 16px 12px; max-width: 640px; width: 100%; margin: 0 auto; }
+.logo { width: 40px; height: 40px; flex: none; }
+.logo svg { width: 40px; height: 40px; display: block; }
+.brand h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: .2px; }
+.brand small { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.pill { margin-left: auto; display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px;
+  border-radius: 999px; background: var(--card); box-shadow: var(--shadow); font-size: 12.5px; max-width: 55%; }
+.pill span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.ready, .dot.idle { background: var(--ok); }
+.dot.loading { background: var(--warn); animation: pulse 1.2s infinite; }
+.dot.error { background: var(--bad); }
+@keyframes pulse { 50% { opacity: .35; } }
+
+.card { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); padding: 4px 16px; margin: 0 0 12px; }
+.card h2 { font-size: 12px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--muted);
+  margin: 12px 0 4px; display: flex; align-items: center; gap: 8px; }
+.row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); }
+.card h2 + .row { border-top: 0; }
+.row .t { flex: 1; min-width: 0; }
+.row .t b { font-weight: 550; display: block; }
+.row .t small { color: var(--muted); font-size: 12.5px; display: block; }
+.sub { padding-left: 0; }
+
+/* switch */
+.sw { position: relative; width: 40px; height: 22px; flex: none; }
+.sw input { opacity: 0; width: 0; height: 0; position: absolute; }
+.sw i { position: absolute; inset: 0; border-radius: 999px; background: #c4c9d4; transition: .15s; cursor: pointer; }
+.sw i::after { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; border-radius: 50%;
+  background: #fff; transition: .15s; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.sw input:checked + i { background: var(--accent); }
+.sw input:checked + i::after { transform: translateX(18px); }
+.sw input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* segmented */
+.seg { display: inline-flex; background: var(--field); border-radius: 9px; padding: 3px; gap: 2px; flex: none; }
+.seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12.5px;
+  padding: 5px 10px; border-radius: 7px; cursor: pointer; }
+.seg button.on { background: var(--card); color: var(--text); box-shadow: var(--shadow); font-weight: 550; }
+.dis { opacity: .45; pointer-events: none; }
+
+button.btn, a.btn { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--card); color: var(--text);
+  padding: 7px 13px; border-radius: 9px; cursor: pointer; text-decoration: none; white-space: nowrap; }
+button.btn:hover { border-color: var(--muted); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 550; }
+button.primary:hover { filter: brightness(1.05); border-color: var(--accent); }
+button.big { width: 100%; padding: 12px; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+kbd { font: 11.5px "Segoe UI", sans-serif; border: 1px solid rgba(255,255,255,.5); border-radius: 5px; padding: 1px 6px; opacity: .9; }
+button.link { border: 0; background: none; color: var(--accent); font: inherit; font-size: 12.5px; cursor: pointer; padding: 0; }
+
+.key { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.key input { flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 8px 10px; border-radius: 9px;
+  border: 1px solid var(--line); background: var(--field); color: var(--text); }
+.key input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 0 12px; }
+.chip { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--field); color: var(--muted); }
+.chip.ok { color: var(--ok); } .chip.bad { color: var(--bad); }
+.chip b { font-weight: 600; }
+
+footer { display: flex; gap: 8px; padding: 10px 16px 16px; max-width: 640px; width: 100%; margin: 0 auto; flex-wrap: wrap; }
+footer .sp { flex: 1; }
+.hint { color: var(--muted); font-size: 12px; text-align: center; padding: 0 16px 14px; }
+
+#toast { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px); opacity: 0; transition: .2s;
+  background: #1b1f2a; color: #fff; padding: 9px 16px; border-radius: 10px; font-size: 13px; max-width: 90vw;
+  pointer-events: none; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+dialog { border: 0; border-radius: 14px; padding: 20px; max-width: 420px; width: calc(100vw - 40px);
+  background: var(--card); color: var(--text); box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+dialog::backdrop { background: rgba(0,0,0,.35); }
+dialog h3 { margin: 0 0 8px; font-size: 16px; }
+dialog p { margin: 0 0 16px; white-space: pre-wrap; color: var(--muted); }
+dialog .act { display: flex; justify-content: flex-end; }
+#offline { display: none; background: #fff4e5; color: #8a5300; text-align: center; padding: 8px; font-size: 13px; }
+@media (prefers-color-scheme: dark) { #offline { background: #3a2c14; color: #ffcf80; } }
+
+/* OCR view */
+.ocr { padding: 16px; display: none; flex-direction: column; gap: 10px; min-height: 100vh; }
+.ocr h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin: 4px 0 0; }
+.ocr .mn { font-size: 16px; white-space: pre-wrap; background: var(--card); border-radius: 12px; padding: 14px; box-shadow: var(--shadow); }
+.ocr .orig { font-size: 13px; color: var(--muted); white-space: pre-wrap; }
+.ocr .bar { display: flex; gap: 8px; margin-top: auto; }
+.spin { width: 18px; height: 18px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%;
+  animation: rot .8s linear infinite; display: inline-block; vertical-align: -4px; margin-right: 8px; }
+@keyframes rot { to { transform: rotate(360deg); } }
+body.ocrmode header, body.ocrmode main, body.ocrmode footer, body.ocrmode .hint { display: none; }
+body.ocrmode .ocr { display: flex; }
+
+/* шинэ хувилбарын мэдэгдэл */
+#upd { display: none; align-items: center; justify-content: center; gap: 12px; background: var(--accent-soft);
+  color: var(--text); padding: 8px 16px; font-size: 13px; }
+#upd.show { display: flex; }
+
+/* миний үгс */
+.wl { max-height: 360px; overflow: auto; margin: 0 -4px; }
+.wl .w { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-top: 1px solid var(--line); }
+.wl .w:first-child { border-top: 0; }
+.wl .w .t { flex: 1; min-width: 0; }
+.wl .w b { font-weight: 600; }
+.wl .w small { color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wl .w.done b { color: var(--muted); text-decoration: line-through; }
+.wl .ic { border: 1px solid var(--line); background: var(--card); color: var(--muted); border-radius: 8px; width: 30px; height: 28px;
+  cursor: pointer; font-size: 14px; flex: none; }
+.wl .ic.on { color: var(--ok); border-color: var(--ok); }
+.wf { display: flex; gap: 6px; margin-bottom: 10px; }
+.wf .seg { flex: none; }
+.empty { color: var(--muted); text-align: center; padding: 30px 10px; }
+.fc { border-radius: 14px; background: var(--field); min-height: 180px; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; text-align: center; padding: 20px; cursor: pointer; user-select: none; }
+.fc .fw { font-size: 26px; font-weight: 650; }
+.fc .fm { font-size: 17px; margin-top: 12px; color: var(--accent); }
+.fc .fh { font-size: 12px; color: var(--muted); margin-top: 14px; }
+.fcb { display: flex; gap: 8px; margin-top: 12px; }
+.fcb button { flex: 1; }
+.fcn { color: var(--muted); font-size: 12px; text-align: center; margin-top: 8px; }
+
+/* токен/түлхүүр авах заавар — видео шиг өөрөө тоглодог алхмууд */
+dialog.guide { max-width: 560px; padding: 16px; }
+.g-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.g-top h3 { margin: 0; flex: 1; font-size: 15.5px; }
+.g-x { border: 0; background: none; color: var(--muted); font-size: 20px; cursor: pointer; padding: 0 4px; line-height: 1; }
+.g-screen { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid var(--line);
+  background: #fff; color: #1f2328; height: 250px; font: 13px/1.4 "Segoe UI", system-ui, sans-serif; color-scheme: light; }
+.g-url { display: flex; align-items: center; gap: 8px; background: #eef1f5; padding: 7px 10px; border-bottom: 1px solid #dde2ea; }
+.g-url i { width: 9px; height: 9px; border-radius: 50%; background: #d4d9e1; flex: none; }
+.g-url span { flex: 1; background: #fff; border-radius: 999px; padding: 3px 12px; color: #57606a; font-size: 12px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-page { padding: 14px 18px; }
+.g-page h4 { margin: 0 0 10px; font-size: 15px; }
+.g-page .lbl { font-weight: 600; font-size: 12.5px; margin: 8px 0 4px; }
+.g-page .muted { color: #6e7781; font-size: 12px; }
+.g-in { border: 1px solid #d0d7de; border-radius: 6px; padding: 6px 9px; min-height: 30px; background: #f6f8fa; font-size: 13px; }
+.g-btn { display: inline-block; border: 1px solid #d0d7de; border-radius: 6px; padding: 5px 12px; background: #f6f8fa; font-weight: 600; font-size: 12.5px; }
+.g-btn.green { background: #1f883d; border-color: #1f883d; color: #fff; }
+.g-btn.blue { background: #1a73e8; border-color: #1a73e8; color: #fff; border-radius: 999px; }
+.g-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid #d0d7de;
+  border-radius: 6px; padding: 8px 10px; margin-top: 6px; }
+.g-key { font-family: Consolas, monospace; font-size: 12px; background: #fff8c5; border: 1px solid #e8d77a; border-radius: 6px;
+  padding: 7px 9px; display: flex; justify-content: space-between; gap: 8px; }
+.g-hm { background: #f4f5f8; height: 100%; }
+.g-hm .card2 { background: #fff; border-radius: 12px; padding: 12px 14px; box-shadow: 0 1px 3px rgba(16,24,40,.08); }
+.tg { transition: box-shadow .25s, background .25s; }
+.tg.on { box-shadow: 0 0 0 3px rgba(255,170,0,.85); border-radius: 6px; }
+.g-cur { position: absolute; left: 70%; top: 85%; width: 20px; height: 20px; pointer-events: none; z-index: 3;
+  transition: left 1s cubic-bezier(.4,0,.2,1), top 1s cubic-bezier(.4,0,.2,1); }
+.g-cur::before { content: ""; position: absolute; inset: 0; background: no-repeat center/contain
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M2 1l14 9-6 1.4 3.6 6.6-2.6 1.4-3.6-6.6L3 17z' fill='%23111' stroke='%23fff' stroke-width='1.3'/%3E%3C/svg%3E"); }
+.g-cur.click::after { content: ""; position: absolute; left: -8px; top: -8px; width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid rgba(255,140,0,.9); animation: g-ring .5s ease-out forwards; }
+@keyframes g-ring { from { transform: scale(.4); opacity: 1; } to { transform: scale(1.8); opacity: 0; } }
+.g-cap { margin: 12px 2px 8px; min-height: 3.2em; font-size: 14px; }
+.g-cap b.n { display: inline-block; min-width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%;
+  background: var(--accent); color: #fff; font-size: 12px; margin-right: 6px; }
+.g-bar { display: flex; gap: 4px; margin-bottom: 12px; }
+.g-bar button { flex: 1; height: 5px; border: 0; padding: 0; border-radius: 3px; background: var(--line); cursor: pointer; overflow: hidden; position: relative; }
+.g-bar button.done { background: var(--accent); }
+.g-bar button.cur::after { content: ""; position: absolute; inset: 0; background: var(--accent); transform-origin: left;
+  animation: g-fill var(--dur) linear forwards; }
+.g-bar.paused button.cur::after { animation-play-state: paused; }
+@keyframes g-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.g-ctl { display: flex; gap: 8px; align-items: center; }
+.g-ctl .sp { flex: 1; }
+@media (prefers-reduced-motion: reduce) { .g-cur { transition: none; } .g-bar button.cur::after { animation: none; transform: scaleX(1); } }
+</style>
+</head>
+<body>
+<div id="offline">Програмтай холбогдож чадсангүй — дахин холбогдож байна…</div>
+<div id="upd"><span id="updT"></span><button class="btn primary" id="updB">Шинэчлэх</button></div>
+
+<header>
+  <div class="logo"><svg width="40" height="40" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1565c0"/><stop offset="1" stop-color="#0d2c6b"/></linearGradient></defs><rect width="64" height="64" rx="15" fill="url(#g)"/><path d="M12 12h40a6 6 0 0 1 6 6v22a6 6 0 0 1-6 6H30l-10 8v-8h-8a6 6 0 0 1-6-6V18a6 6 0 0 1 6-6z" fill="#fff"/><g fill="none" stroke="#e53935" stroke-width="3" stroke-linecap="round" transform="translate(32 29) scale(0.78)"><path d="M0 -11 L11 0 L0 11 L-11 0 Z"/><path d="M-5.5 -5.5 L5.5 5.5 M5.5 -5.5 L-5.5 5.5"/><circle cx="0" cy="-13.5" r="3.6"/><circle cx="13.5" cy="0" r="3.6"/><circle cx="0" cy="13.5" r="3.6"/><circle cx="-13.5" cy="0" r="3.6"/></g></svg></div>
+  <div class="brand"><h1>Хэлмэрч</h1><small id="ver">монгол орчуулга</small></div>
+  <div class="pill" title=""><i class="dot" id="dot"></i><span id="status">Холбогдож байна…</span></div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Видео хадмал</h2>
+    <div class="row">
+      <div class="t"><b>Видеон дээр монгол хадмал</b><small>Видеоны «МН» товч эсвэл Alt+M дарж асаана</small></div>
+      <label class="sw"><input type="checkbox" data-s="subs"><i></i></label>
+    </div>
+    <div class="row" data-dep="subs">
+      <div class="t"><b>Яриа таних</b><small id="asrdesc">Видео картгүй бол онлайнаар</small></div>
+      <div class="seg" data-seg="asr"><button data-v="auto">Автомат</button><button data-v="local">Видео карт</button><button data-v="gemini">Онлайн</button></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Текст ба PDF</h2>
+    <div class="row">
+      <div class="t"><b>Үг дээр хулгана очиход орчуулах</b></div>
+      <label class="sw"><input type="checkbox" data-s="hover"><i></i></label>
+    </div>
+    <div class="row" data-dep="hover">
+      <div class="t"><b>Хэзээ</b></div>
+      <div class="seg" data-seg="hover_mode"><button data-v="ctrl">Ctrl дарахад</button><button data-v="always">Шууд</button></div>
+    </div>
+    <div class="row">
+      <div class="t"><b>Сонгосон текстийг орчуулах</b></div>
+      <label class="sw"><input type="checkbox" data-s="select"><i></i></label>
+    </div>
+    <div class="row">
+      <div class="t"><b>PDF-ийг орчуулгатай нээх</b><small>Хүснэгт, загвар хэвээр монгол хуудас</small></div>
+      <label class="sw"><input type="checkbox" data-s="pdf"><i></i></label>
+    </div>
+    <div class="row">
+      <div class="t"><b>Мэргэжлийн (AI) орчуулга</b><small>Copilot эсвэл Gemini — PMP гэх мэт мэргэжлийн текстэд</small></div>
+      <label class="sw"><input type="checkbox" data-s="quality"><i></i></label>
+    </div>
+    <div class="row" data-dep="quality">
+      <div class="t"><b>Нэр томьёог хаалтанд англиар</b><small>жишээ нь: оролцогч талууд (stakeholders)</small></div>
+      <button class="btn" data-open="glossary">Толь засах</button>
+      <label class="sw"><input type="checkbox" data-s="pro_terms"><i></i></label>
+    </div>
+  </section>
+
+  <section class="card" style="padding:14px 16px">
+    <button class="btn primary big" id="capture">Дэлгэцээс орчуулах <kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>T</kbd></button>
+    <div class="hint" style="padding:8px 0 0">Зураг, скан PDF, ямар ч програмын текстийг хулганаар зурж орчуулна</div>
+  </section>
+
+  <section class="card">
+    <h2>Миний үгс</h2>
+    <div class="row">
+      <div class="t"><b id="wSum">Одоогоор үг алга</b><small>Ctrl дарж хайсан, сонгож орчуулсан үгс энд автоматаар хадгалагдана</small></div>
+      <button class="btn" id="wList">Жагсаалт</button>
+      <button class="btn primary" id="wCards">Давтах</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>AI түлхүүрүүд</h2>
+    <div class="chips" id="chips"></div>
+    <div class="row" style="display:block">
+      <div class="t"><b>Gemini түлхүүр</b><small>Үнэгүй. Видео картгүй үед яриа таних, зургаас орчуулахад хэрэгтэй.
+        <button class="link" data-guide="gemini">▶ Түлхүүр авах заавар</button></small></div>
+      <div class="key"><input id="k_gemini" type="password" autocomplete="off" spellcheck="false" placeholder="AIza…">
+        <button class="btn" data-save="gemini">Хадгалах</button></div>
+    </div>
+    <div class="row" style="display:block">
+      <div class="t"><b>Copilot (GitHub) токен</b><small>Permissions → Models: Read-only.
+        <button class="link" data-guide="github">▶ Токен авах заавар</button></small></div>
+      <div class="key"><input id="k_github" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
+        <button class="btn" data-save="github">Хадгалах</button><button class="btn" id="test">Шалгах</button></div>
+    </div>
+    <div class="row" style="padding-bottom:12px"><div class="t"><small id="usage">Өнөөдрийн хэрэглээ: —</small></div></div>
+  </section>
+
+  <section class="card">
+    <h2>Ерөнхий</h2>
+    <div class="row">
+      <div class="t"><b>Windows асахад эхлэх</b><small>Цагны хажууд Хэлмэрчийн дүрстэй ажиллана</small></div>
+      <label class="sw"><input type="checkbox" id="autostart"><i></i></label>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <button class="btn" data-open="guide">Заавар</button>
+  <button class="btn" data-open="log">Лог</button>
+  <span class="sp"></span>
+  <button class="btn" id="restart">Дахин эхлүүлэх</button>
+  <button class="btn" id="quit">Гарах</button>
+</footer>
+<div class="hint">Цонхыг хаахад програм цагны хажууд ажилласаар байна</div>
+
+<section class="ocr" id="ocr">
+  <div id="ocrbody"><span class="spin"></span>Уншиж орчуулж байна… (5–20 сек)</div>
+  <div class="bar"><button class="btn primary" id="ocrcopy" disabled>Монгол текстийг хуулах</button>
+    <span style="flex:1"></span><button class="btn" onclick="window.close()">Хаах</button></div>
+</section>
+
+<dialog id="dlg"><h3 id="dlgT"></h3><p id="dlgM"></p><div class="act"><button class="btn primary" onclick="dlg.close()">За</button></div></dialog>
+<dialog id="guide" class="guide">
+  <div class="g-top"><h3 id="gT"></h3><button class="g-x" id="gX" title="Хаах">×</button></div>
+  <div class="g-screen" id="gS"></div>
+  <div class="g-cap" id="gC"></div>
+  <div class="g-bar" id="gB"></div>
+  <div class="g-ctl">
+    <button class="btn" id="gPrev" title="Өмнөх">◀</button>
+    <button class="btn" id="gPlay" title="Түр зогсоох / тоглуулах">⏸</button>
+    <button class="btn" id="gNext" title="Дараах">▶</button>
+    <span class="sp"></span>
+    <button class="btn primary" id="gOpen"></button>
+  </div>
+</dialog>
+<dialog id="words" class="guide">
+  <div class="g-top"><h3 id="wT">Миний үгс</h3><button class="g-x" onclick="words.close()" title="Хаах">×</button></div>
+  <div id="wBody"></div>
+</dialog>
+<div id="toast"></div>
+
+<script>
+const T = new URLSearchParams(location.search).get("t") || "";
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+let S = {}, busy = 0;
+
+async function api(action, extra = {}) {
+  const r = await fetch("/ui/api", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ t: T, action, ...extra }) });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+  return r.json();
+}
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("show"), 2600);
+}
+function dialog(title, msg) { $("#dlgT").textContent = title; $("#dlgM").textContent = msg; $("#dlg").showModal(); }
+
+function render(st) {
+  S = st.settings || {};
+  $("#ver").textContent = "v" + st.version + " · монгол орчуулга";
+  $("#dot").className = "dot " + st.status.kind;
+  $("#status").textContent = st.status.text;
+  $(".pill").title = st.status.text;
+  if (!busy) {
+    for (const el of $$("[data-s]")) el.checked = !!S[el.dataset.s];
+    for (const g of $$("[data-seg]")) for (const b of $$("button", g)) b.classList.toggle("on", S[g.dataset.seg] === b.dataset.v);
+    $("#autostart").checked = !!st.autostart;
+  }
+  for (const r of $$("[data-dep]")) r.classList.toggle("dis", !S[r.dataset.dep]);
+  $("#asrdesc").textContent = st.asr_desc || "Видео картгүй бол онлайнаар";
+  for (const [k, id] of [["gemini", "k_gemini"], ["github", "k_github"]]) {
+    const inp = $("#" + id), info = st.keys[k];
+    if (document.activeElement !== inp && !inp.value)
+      inp.placeholder = info.set ? `•••••••• ${info.tail}  (хадгалсан)` : (k === "gemini" ? "AIza…" : "github_pat_…");
+  }
+  const chips = Object.entries(st.providers || {}).map(([n, v]) => {
+    const ok = v.startsWith("✓");
+    return `<span class="chip ${ok ? "ok" : "bad"}" title="${v.replace(/"/g, "&quot;")}"><b>${ok ? "✓" : "✗"}</b> ${n}</span>`;
+  });
+  $("#chips").innerHTML = chips.join("") || `<span class="chip">Орчуулга: ${st.translator || "…"}</span>`;
+  const u = st.usage || {}, parts = ["Copilot", "Gemini", "Claude"].filter((k) => u[k]).map((k) => `${k} ${u[k]}`);
+  if (u.video) parts.push(`видео AI ${u.video}/${st.video_daily}`);
+  $("#usage").textContent = "Өнөөдрийн AI хэрэглээ: " + (parts.join(" · ") || "одоогоор алга");
+  // шинэ хувилбар
+  $("#upd").classList.toggle("show", !!st.update);
+  if (st.update) $("#updT").textContent = `Шинэ хувилбар ${st.update.version} гарлаа`;
+  // миний үгс
+  const wn = st.words_n || 0, wt = st.words_todo || 0;
+  $("#wSum").textContent = wn ? `${wn} үг · ${wt} давтах` : "Одоогоор үг алга";
+  $("#wCards").disabled = !wt;
+}
+
+$("#updB").addEventListener("click", async () => {
+  if (!confirm("Шинэ хувилбарыг татаж суулгах уу? Тохиргоо, түлхүүр, үгс хадгалагдана. Суусны дараа chrome://extensions → Хэлмэрч → ↻ дарна.")) return;
+  try { await api("update"); toast("Татаж байна… дууссаны дараа суулгагч нээгдэнэ"); }
+  catch (e) { toast("Одоогоор шинэчлэх боломжгүй — дараа дахин оролдоно уу"); }
+});
+
+// --- миний үгс: жагсаалт ба давтах карт
+const escH = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+let W = [], wFilter = "todo";
+async function loadWords() { W = (await api("words").catch(() => ({ words: [] }))).words || []; }
+function drawList() {
+  const list = W.filter((w) => wFilter === "all" || (wFilter === "todo" ? !w.learned : w.learned));
+  $("#wBody").innerHTML =
+    `<div class="wf"><div class="seg" id="wSeg"><button data-f="todo">Давтах (${W.filter((w) => !w.learned).length})</button>` +
+    `<button data-f="done">Сурсан (${W.filter((w) => w.learned).length})</button><button data-f="all">Бүгд</button></div></div>` +
+    (list.length ? `<div class="wl">${list.map((w) => `<div class="w${w.learned ? " done" : ""}" data-k="${escH(w.k)}">
+        <div class="t"><b>${escH(w.w)}</b><small>${escH(w.mn)}${w.n > 1 ? ` · ${w.n} удаа хайсан` : ""}</small></div>
+        <button class="ic${w.learned ? " on" : ""}" data-a="learn" title="${w.learned ? "Давтах руу буцаах" : "Сурсан"}">✓</button>
+        <button class="ic" data-a="del" title="Устгах">×</button></div>`).join("")}</div>`
+      : `<div class="empty">${W.length ? "Энд үг алга" : "Ctrl дарж үг дээр хулгана аваачих эсвэл үг сонгоход энд хадгалагдана"}</div>`);
+  $$("#wSeg button").forEach((b) => { b.classList.toggle("on", b.dataset.f === wFilter); b.onclick = () => { wFilter = b.dataset.f; drawList(); }; });
+  $$("#wBody .w button").forEach((b) => b.onclick = async () => {
+    const k = b.closest(".w").dataset.k, w = W.find((x) => x.k === k);
+    if (b.dataset.a === "del") { await api("word", { k, delete: true }).catch(() => {}); W = W.filter((x) => x.k !== k); }
+    else { w.learned = !w.learned; await api("word", { k, learned: w.learned }).catch(() => {}); }
+    drawList(); refresh();
+  });
+}
+let deck = [], di = 0, shown = false;
+function drawCard() {
+  if (di >= deck.length) {
+    $("#wBody").innerHTML = `<div class="empty">Болоо! ${deck.length} үг давтлаа 👏</div>` +
+      `<div class="fcb"><button class="btn" id="fcList">Жагсаалт</button><button class="btn primary" id="fcAgain">Дахин давтах</button></div>`;
+    $("#fcList").onclick = () => { wFilter = "todo"; $("#wT").textContent = "Миний үгс"; drawList(); };
+    $("#fcAgain").onclick = startCards;
+    return;
+  }
+  const w = deck[di];
+  $("#wBody").innerHTML = `<div class="fc" id="fc"><div class="fw">${escH(w.w)}</div>` +
+    (shown ? `<div class="fm">${escH(w.mn)}</div>` : `<div class="fh">Утгыг нь санаад, дарж шалгана уу</div>`) + `</div>` +
+    (shown ? `<div class="fcb"><button class="btn" id="fcNo">Дахин давтана</button><button class="btn primary" id="fcYes">Мэдэж байна ✓</button></div>`
+           : `<div class="fcb"><button class="btn primary" id="fcShow">Утгыг харах</button></div>`) +
+    `<div class="fcn">${di + 1} / ${deck.length}</div>`;
+  const reveal = () => { if (!shown) { shown = true; drawCard(); } };
+  $("#fc").onclick = reveal;
+  if (!shown) $("#fcShow").onclick = reveal;
+  else {
+    $("#fcNo").onclick = () => { deck.push(w); di++; shown = false; drawCard(); };      // төгсгөлд нь дахин гарна
+    $("#fcYes").onclick = async () => { await api("word", { k: w.k, learned: true }).catch(() => {}); w.learned = true; di++; shown = false; drawCard(); refresh(); };
+  }
+}
+async function startCards() {
+  await loadWords();
+  // олон удаа хайсан (хэцүү) үгс түрүүнд, бусад нь холилдсон
+  deck = W.filter((w) => !w.learned).map((w) => ({ w, r: Math.random() - Math.min(w.n, 5) / 5 })).sort((a, b) => a.r - b.r).map((x) => x.w).slice(0, 20);
+  di = 0; shown = false;
+  $("#wT").textContent = "Үг давтах";
+  drawCard();
+}
+$("#wList").addEventListener("click", async () => { await loadWords(); wFilter = "todo"; $("#wT").textContent = "Миний үгс"; drawList(); $("#words").showModal(); });
+$("#wCards").addEventListener("click", async () => { await startCards(); $("#words").showModal(); });
+addEventListener("keydown", (e) => {
+  if (!$("#words").open || !deck.length || di >= deck.length || $("#wT").textContent !== "Үг давтах") return;
+  if (e.key === " " && !shown) { e.preventDefault(); shown = true; drawCard(); }
+});
+
+async function refresh() {
+  try { render(await api("state")); $("#offline").style.display = "none"; }
+  catch (e) { $("#offline").style.display = "block"; }
+}
+
+async function saveSettings(update) {
+  busy++;
+  try { const r = await api("settings", { update }); S = r.settings || S; toast("Хадгалагдлаа"); }
+  catch (e) { toast("Хадгалж чадсангүй: " + e.message); }
+  finally { busy--; refresh(); }
+}
+
+for (const el of $$("[data-s]")) el.addEventListener("change", () => saveSettings({ [el.dataset.s]: el.checked }));
+for (const g of $$("[data-seg]")) for (const b of $$("button", g))
+  b.addEventListener("click", () => {
+    $$("button", g).forEach((x) => x.classList.toggle("on", x === b));
+    saveSettings({ [g.dataset.seg]: b.dataset.v });
+  });
+$("#autostart").addEventListener("change", async (e) => {
+  await api("autostart", { on: e.target.checked }).catch(() => {});
+  toast(e.target.checked ? "Windows асахад эхэлнэ" : "Автоматаар эхлэхгүй");
+});
+for (const b of $$("[data-open]")) b.addEventListener("click", () => api("open", { what: b.dataset.open }).catch(() => {}));
+for (const b of $$("[data-save]")) b.addEventListener("click", async () => {
+  const inp = $("#k_" + b.dataset.save), value = inp.value.trim();
+  if (!value && !confirm("Хадгалсан түлхүүрийг устгах уу?")) return;
+  try { await api("key", { name: b.dataset.save, value }); inp.value = ""; toast(value ? "Түлхүүр хадгалагдлаа ✓" : "Түлхүүр устлаа"); }
+  catch (e) { toast("Алдаа: " + e.message); }
+  refresh();
+});
+$("#test").addEventListener("click", async () => {
+  const b = $("#test"), inp = $("#k_github");
+  b.disabled = true; b.innerHTML = '<span class="spin"></span>Шалгаж байна';
+  try {
+    const r = await api("test", { name: "Copilot", value: inp.value.trim() });
+    inp.value = "";
+    dialog(r.ok ? "Copilot ажиллаж байна ✓" : "Copilot ажиллахгүй байна", r.msg);
+  } catch (e) { dialog("Алдаа", e.message); }
+  b.disabled = false; b.textContent = "Шалгах"; refresh();
+});
+$("#capture").addEventListener("click", () => api("capture").catch(() => {}));
+$("#restart").addEventListener("click", async () => {
+  toast("Дахин эхлүүлж байна…");
+  await api("restart").catch(() => {});
+  setTimeout(refresh, 4000);
+});
+$("#quit").addEventListener("click", async () => {
+  if (!confirm("Хэлмэрчийг бүрэн хаах уу? Видео хадмал, орчуулга ажиллахаа болино.")) return;
+  await api("quit").catch(() => {});
+  window.close();
+});
+
+// --- токен/түлхүүр авах заавар: видео шиг өөрөө тоглодог алхмууд (хулгана товч руу очиж дарна, текст бичигдэнэ)
+// Алхам бүр: url, page (дуурайсан хуудас; .tg = хулгана очих газар, data-type = бичигдэх текст), cap (тайлбар)
+const HM_PAGE = (inner) => `<div class="g-hm g-page"><div class="card2"><div class="lbl">${inner}</div></div></div>`;
+const GUIDES = {
+  github: {
+    title: "Copilot (GitHub) токен авах", open: "token", openLabel: "GitHub-ийг нээх →",
+    steps: [
+      { url: "github.com/login", cap: "Доорх <b>«GitHub-ийг нээх»</b> товчийг дарна. GitHub бүртгэлээрээ нэвтэрнэ (бүртгэлгүй бол <b>Sign up</b> — үнэгүй).",
+        page: `<div class="g-page" style="max-width:260px;margin:auto"><h4>Sign in to GitHub</h4><div class="lbl">Username or email</div><div class="g-in">you@mail.com</div>
+               <div class="lbl">Password</div><div class="g-in">••••••••</div><div style="margin-top:12px"><span class="g-btn green tg" style="display:block;text-align:center">Sign in</span></div></div>` },
+      { url: "github.com/settings/personal-access-tokens/new", cap: "<b>Token name</b> хэсэгт <b>Helmerch</b> гэж бичнэ.",
+        page: `<div class="g-page"><h4>New fine-grained personal access token</h4><div class="lbl">Token name *</div><div class="g-in tg" data-type="Helmerch"></div>
+               <div class="lbl">Expiration</div><div class="g-in" style="width:180px">30 days ▾</div></div>` },
+      { url: "github.com/settings/personal-access-tokens/new", cap: "<b>Expiration</b>-ээс хамгийн урт хугацааг сонгоно (жишээ нь 1 жил). Хугацаа дуусахаар шинээр авна.",
+        page: `<div class="g-page"><h4>New fine-grained personal access token</h4><div class="lbl">Token name *</div><div class="g-in">Helmerch</div>
+               <div class="lbl">Expiration</div><div class="g-in tg" style="width:180px" data-type="366 days ▾">30 days ▾</div>
+               <div class="lbl">Repository access</div><div class="muted">◉ Public repositories (хэвээр нь үлдээнэ)</div></div>` },
+      { url: "github.com/settings/personal-access-tokens/new", cap: "Доош гүйлгээд <b>Permissions</b> хэсгээс <b>Models</b>-ийг олж <b>Read-only</b> болгоно. Харагдахгүй бол <b>Add permissions</b> → <b>Models</b>.",
+        page: `<div class="g-page"><h4>Permissions</h4><div class="muted">Account permissions</div>
+               <div class="g-row"><span>Gists</span><span class="muted">No access ▾</span></div>
+               <div class="g-row"><span><b>Models</b><br><span class="muted">Allows access to GitHub Models</span></span><span class="g-btn tg" data-type="Read-only ▾">No access ▾</span></div>
+               <div class="g-row"><span>Profile</span><span class="muted">No access ▾</span></div></div>` },
+      { url: "github.com/settings/personal-access-tokens/new", cap: "Хамгийн доор <b>Generate token</b> дарна. Баталгаажуулах цонх гарвал дахин <b>Generate token</b>.",
+        page: `<div class="g-page"><h4>Overview</h4><div class="muted">1 permission for user account: Read access to models</div>
+               <div style="margin-top:40px"><span class="g-btn green tg">Generate token</span> <span class="g-btn">Cancel</span></div></div>` },
+      { url: "github.com/settings/personal-access-tokens", cap: "Гарч ирсэн <b>github_pat_…</b> токены хажуугийн хуулах дүрсийг дарж хуулна. <b>Зөвхөн нэг удаа</b> харагддаг!",
+        page: `<div class="g-page"><h4>Fine-grained personal access tokens</h4><div class="muted" style="margin-bottom:8px">Make sure to copy your token now. You won't be able to see it again!</div>
+               <div class="g-key"><span>github_pat_11ABCDEF0_x9Yk…Qz</span><span class="tg">⧉</span></div></div>` },
+      { url: "Хэлмэрч — тохиргоо", cap: "Хэлмэрчид буцаж ирээд токеноо <b>Copilot (GitHub) токен</b> нүдэнд буулгаж (Ctrl+V) <b>Хадгалах</b>, дараа нь <b>Шалгах</b> дарна. «Copilot ажиллаж байна ✓» гарвал болоо.",
+        page: HM_PAGE(`Copilot (GitHub) токен</div><div style="display:flex;gap:8px;margin-top:6px"><div class="g-in" style="flex:1" data-type="github_pat_11ABCDEF0_x9Yk…Qz"></div>
+               <span class="g-btn tg">Хадгалах</span><span class="g-btn">Шалгах</span>`) },
+    ],
+  },
+  gemini: {
+    title: "Gemini түлхүүр авах (үнэгүй)", open: "gemini_key", openLabel: "Google AI Studio-г нээх →",
+    steps: [
+      { url: "accounts.google.com", cap: "Доорх <b>«Google AI Studio-г нээх»</b> товчийг дарна. Google (Gmail) бүртгэлээрээ нэвтэрнэ.",
+        page: `<div class="g-page" style="max-width:260px;margin:auto;text-align:center"><h4>Sign in</h4><div class="muted">to continue to Google AI Studio</div>
+               <div class="g-in" style="margin:12px 0;text-align:left">you@gmail.com</div><span class="g-btn blue tg">Next</span></div>` },
+      { url: "aistudio.google.com", cap: "Анх удаа орж байгаа бол нөхцөлийг зөвшөөрөөд (☑) <b>Continue</b> дарна.",
+        page: `<div class="g-page"><h4>Welcome to Google AI Studio</h4><div class="muted">☑ I acknowledge the Terms of Service</div>
+               <div style="margin-top:30px"><span class="g-btn blue tg">Continue</span></div></div>` },
+      { url: "aistudio.google.com/apikey", cap: "Баруун дээд буланд байгаа <b>Create API key</b> товчийг дарна.",
+        page: `<div class="g-page"><div style="display:flex;justify-content:space-between;align-items:center"><h4>API Keys</h4><span class="g-btn blue tg">+ Create API key</span></div>
+               <div class="muted">You have no API keys yet</div></div>` },
+      { url: "aistudio.google.com/apikey", cap: "Төсөл (project) сонгох цонх гарвал байгааг нь сонгох эсвэл шинээр үүсгээд <b>Create key</b> дарна.",
+        page: `<div class="g-page"><h4>Create a new key</h4><div class="lbl">Choose an imported project</div><div class="g-in" style="width:240px">Default Gemini Project ▾</div>
+               <div style="margin-top:20px;text-align:right"><span class="g-btn">Cancel</span> <span class="g-btn blue tg">Create key</span></div></div>` },
+      { url: "aistudio.google.com/apikey", cap: "Гарч ирсэн <b>AIza…</b> гэж эхэлсэн түлхүүрийг <b>Copy</b> дарж хуулна.",
+        page: `<div class="g-page"><h4>API key generated</h4><div class="g-key"><span>AIzaSyB3x…k7Qw</span><span class="tg">Copy</span></div></div>` },
+      { url: "Хэлмэрч — тохиргоо", cap: "Хэлмэрчид буцаж ирээд түлхүүрээ <b>Gemini түлхүүр</b> нүдэнд буулгаж (Ctrl+V) <b>Хадгалах</b> дарна. Болоо!",
+        page: HM_PAGE(`Gemini түлхүүр</div><div style="display:flex;gap:8px;margin-top:6px"><div class="g-in" style="flex:1" data-type="AIzaSyB3x…k7Qw"></div>
+               <span class="g-btn tg">Хадгалах</span>`) },
+    ],
+  },
+};
+const STEP_MS = 6500;
+let G = null, gi = 0, gPaused = false, gTimers = [];
+const gClear = () => { gTimers.forEach(clearTimeout); gTimers = []; };
+const gLater = (fn, ms) => gTimers.push(setTimeout(fn, ms));
+function gShow(i) {
+  gClear();
+  gi = Math.max(0, Math.min(G.steps.length - 1, i));
+  const st = G.steps[gi];
+  $("#gS").innerHTML = `<div class="g-url"><i></i><i></i><i></i><span>${st.url}</span></div>${st.page}<div class="g-cur" id="gCur"></div>`;
+  $("#gC").innerHTML = `<b class="n">${gi + 1}</b>${st.cap}`;
+  $("#gB").style.setProperty("--dur", STEP_MS + "ms");
+  const bars = $$("#gB button");
+  bars.forEach((b) => { b.className = ""; });
+  void $("#gB").offsetWidth;                              // явцын зурвасын хөдөлгөөнийг шинээр эхлүүлнэ
+  bars.forEach((b, k) => { b.className = k < gi ? "done" : k === gi ? "cur" : ""; });
+  // хулгана: бичих талбар руу эхлээд, дараа нь дарах товч руу
+  const scr = $("#gS"), cur = $("#gCur"), typeEl = $("[data-type]", scr), tg = $(".tg", scr);
+  const moveTo = (el) => {
+    const a = scr.getBoundingClientRect(), r = el.getBoundingClientRect();
+    cur.style.left = (r.left - a.left + Math.min(r.width / 2, 40)) + "px";
+    cur.style.top = (r.top - a.top + r.height / 2) + "px";
+  };
+  const click = () => { cur.classList.remove("click"); void cur.offsetWidth; cur.classList.add("click"); };
+  let t = 500;
+  if (typeEl) {
+    gLater(() => moveTo(typeEl), t); t += 1100;
+    gLater(() => { click(); typeEl.classList.add("on"); typeEl.textContent = ""; }, t); t += 300;
+    const txt = typeEl.dataset.type;
+    for (let k = 1; k <= txt.length; k++) gLater(() => { typeEl.textContent = txt.slice(0, k); }, t + k * 55);
+    t += txt.length * 55 + 500;
+    if (tg && tg !== typeEl) gLater(() => typeEl.classList.remove("on"), t);
+  }
+  if (tg && tg !== typeEl) {
+    gLater(() => { moveTo(tg); tg.classList.add("on"); }, t); t += 1100;
+    gLater(click, t);
+  }
+  if (!gPaused) gLater(() => { if (gi < G.steps.length - 1) gShow(gi + 1); else { gPaused = true; gSync(); } }, Math.max(STEP_MS, t + 1500));
+}
+function gSync() {
+  $("#gPlay").textContent = gPaused ? "▶︎ Тоглуулах" : "⏸";
+  $("#gB").classList.toggle("paused", gPaused);
+}
+function openGuide(name) {
+  G = GUIDES[name];
+  $("#gT").textContent = G.title;
+  $("#gOpen").textContent = G.openLabel;
+  $("#gB").innerHTML = G.steps.map((_, k) => `<button title="${k + 1}-р алхам"></button>`).join("");
+  $$("#gB button").forEach((b, k) => b.onclick = () => gShow(k));
+  gPaused = false; gSync();
+  $("#guide").showModal();
+  gShow(0);
+}
+for (const b of $$("[data-guide]")) b.addEventListener("click", () => openGuide(b.dataset.guide));
+$("#gPrev").onclick = () => gShow(gi - 1);
+$("#gNext").onclick = () => gShow(gi + 1);
+$("#gPlay").onclick = () => {
+  gPaused = !gPaused;
+  gSync();
+  if (gPaused) { gClear(); return; }                       // зогсоох: дараагийн алхам руу шилжихгүй
+  gShow(gi === G.steps.length - 1 ? 0 : gi);              // үргэлжлүүлэх (төгсгөлд бол эхнээс нь)
+};
+$("#gOpen").onclick = () => api("open", { what: G.open }).catch(() => {});
+$("#gX").onclick = () => $("#guide").close();
+$("#guide").addEventListener("close", gClear);
+
+// --- дэлгэцийн орчуулгын цонх (#ocr=ID)
+const ocrId = (location.hash.match(/ocr=([\w-]+)/) || [])[1];
+if (ocrId) {
+  document.body.classList.add("ocrmode");
+  document.title = "Хэлмэрч — дэлгэцийн орчуулга";
+  const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  let mn = "";
+  const poll = async () => {
+    let r;
+    try { r = await api("ocr", { id: ocrId }); } catch (e) { r = { error: "Програмтай холбогдсонгүй" }; }
+    if (r.pending) return setTimeout(poll, 700);
+    if (r.error) { $("#ocrbody").innerHTML = `<div class="mn">${esc(r.error)}</div>`; return; }
+    mn = r.mongolian || "";
+    $("#ocrbody").innerHTML = `<h2>Монгол</h2><div class="mn">${esc(mn || "Текст олдсонгүй")}</div>` +
+      (r.original ? `<h2>Эх текст</h2><div class="orig">${esc(r.original)}</div>` : "");
+    $("#ocrcopy").disabled = !mn;
+  };
+  $("#ocrcopy").onclick = async () => { await navigator.clipboard.writeText(mn); toast("Хуулагдлаа"); };
+  poll();
+} else {
+  refresh();
+  setInterval(refresh, 1500);
+}
+addEventListener("keydown", (e) => { if (e.key === "Escape" && ocrId) window.close(); });
+</script>
+</body>
+</html>

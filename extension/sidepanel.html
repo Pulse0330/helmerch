@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<title>Хэлмэрч</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --text:#1d2330; --muted:#6b7385; --line:#e3e6ec; --accent:#2278c8; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#16191f; --card:#1f232b; --text:#e9ecf2; --muted:#9aa3b5; --line:#2c313b; --accent:#6aa9ff; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.55 'Segoe UI',Arial,sans-serif; }
+  header { position:sticky; top:0; z-index:2; background:var(--bg); padding:12px 14px 10px; border-bottom:1px solid var(--line); }
+  h1 { font-size:13px; font-weight:600; margin:0 0 8px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  button { font:inherit; font-size:13px; border:1px solid var(--line); background:var(--card); color:var(--text);
+           padding:5px 11px; border-radius:7px; cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button:disabled { opacity:.5; cursor:default; }
+  label { font-size:12.5px; color:var(--muted); display:flex; gap:5px; align-items:center; cursor:pointer; }
+  #status { font-size:12.5px; color:var(--muted); margin-top:7px; min-height:1.2em; }
+  main { padding:10px 12px 40px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:9px; padding:9px 11px; margin-bottom:8px; cursor:pointer; }
+  .card:hover { border-color:var(--accent); }
+  .src { color:var(--muted); font-size:12.5px; margin-bottom:4px; }
+  .mn { font-size:14.5px; }
+  .card.h .mn { font-size:16px; font-weight:600; }
+  .card.hidesrc .src { display:none; }
+  .q { color:var(--accent); font-size:11px; margin-left:4px; }
+  .note { background:var(--card); border:1px solid var(--line); border-radius:9px; padding:12px; color:var(--muted); }
+  .note button { margin-top:10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Хэлмэрч</h1>
+  <div class="row">
+    <button id="go" class="primary">Хуудсыг орчуулах</button>
+    <button id="better" title="AI мэргэжлийн орчуулга">✨ Сайжруулах</button>
+    <label><input type="checkbox" id="showsrc" checked> Эх текст</label>
+  </div>
+  <div id="status"></div>
+</header>
+<main id="list"></main>
+<script src="sidepanel.js"></script>
+</body>
+</html>

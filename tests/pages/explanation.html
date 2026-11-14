@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Нуугдсан тайлбар, дахин оролдлого</title>
+<style>.hide{display:none}</style>
+<script src="stub.js"></script>
+</head><body>
+<!-- Хариулт өгсний дараа гарч ирдэг тайлбар (4 янзаар нуусан) орчуулагдах ёстой.
+     Хоосон хариу авсан хэсэг чимээгүй дахин оролдож орчуулагдах ёстой. -->
+<main>
+  <p id="q">Which process group includes the activity of developing the project charter for a new initiative?</p>
+  <p id="flaky">Flaky paragraph that fails twice before translating correctly.</p>
+  <div id="expA" class="hide">The correct answer is Initiating because the charter formally authorizes the project.</div>
+  <div id="expB" hidden><p id="expBp">Developing the charter happens before planning begins in every predictive project.</p></div>
+  <section id="expC" aria-hidden="true" style="display:none"><p id="expCp">Stakeholders are identified early so their expectations can be managed throughout.</p></section>
+  <div role="dialog" aria-modal="true"><p id="expD">This explanation lives inside a modal dialog and should be treated as real content, not menu.</p></div>
+</main>
+<script src="../../extension/pagetr.js"></script>
+<script>
+setTimeout(() => {
+  document.getElementById("expA").classList.remove("hide");
+  document.getElementById("expB").hidden = false;
+  const c = document.getElementById("expC"); c.removeAttribute("aria-hidden"); c.style.display = "block";
+}, 2000);
+setTimeout(() => check([
+  [tr("q").startsWith("MN:"), "асуулт орчуулагдаагүй"],
+  [tr("flaky").startsWith("MN:"), "бүтэлгүйтсэн хэсэг дахин оролдоод орчуулагдаагүй"],
+  [tr("expA").startsWith("MN:"), "class-аар нуусан тайлбар"],
+  [tr("expBp").startsWith("MN:"), "hidden тайлбар"],
+  [tr("expCp").startsWith("MN:"), "aria-hidden тайлбар"],
+  [tr("expD").startsWith("MN:") && !ui("expD"), "modal доторх тайлбар (цэс гэж үзсэн)"],
+  [__calls.length <= 6, "хэт олон хүсэлт: " + __calls.length],
+]), 15000);
+</script>
+</body></html>

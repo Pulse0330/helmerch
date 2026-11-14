@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Горим солих, булангийн товч</title>
+<script src="stub.js"></script>
+</head><body>
+<!-- 2 хэл → Эх → 2 хэл: "Эх" байх хооронд нэмэгдсэн агуулга ч орчуулагдах ёстой.
+     Хэлмэрчийн булангийн товч сайтын Next товчийг халхлах ёсгүй. -->
+<main id="app">
+  <p id="p1">The project charter formally authorizes the existence of a project.</p>
+  <p id="p2">Stakeholder engagement is planned during the planning process group.</p>
+</main>
+<button id="next" style="position:fixed;right:20px;bottom:20px;padding:10px 24px">Next</button>
+<script src="../../extension/pagetr.js"></script>
+<script>
+setTimeout(() => chrome.storage.local.set({ pageMode: "off" }), 2000);
+setTimeout(() => {
+  const p = document.createElement("p"); p.id = "dyn"; p.textContent = "Risk register is updated throughout the project life cycle.";
+  document.getElementById("app").appendChild(p);
+}, 2500);
+setTimeout(() => chrome.storage.local.set({ pageMode: "bi" }), 3000);
+setTimeout(() => {
+  const n = document.getElementById("next"), r = n.getBoundingClientRect();
+  check([
+    [tr("p1").startsWith("MN:") && tr("p2").startsWith("MN:"), "эхний хэсгүүд орчуулагдаагүй"],
+    [tr("dyn").startsWith("MN:"), "«Эх» горимд нэмэгдсэн хэсэг буцаж асаахад орчуулагдаагүй"],
+    [document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === n, "булангийн товч Next-ийг халхалсан"],
+  ]);
+}, 6000);
+</script>
+</body></html>

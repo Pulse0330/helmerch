@@ -1,0 +1,6 @@
+faster-whisper>=1.1
+numpy
+yt-dlp[default]
+imageio-ffmpeg
+pystray
+pillow

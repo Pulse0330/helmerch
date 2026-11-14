@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Шалгалтын горим, iframe</title>
+<script>window.HM_STORE = { uiTr: false, examMode: true };</script>
+<script src="stub.js"></script>
+</head><body>
+<!-- Шалгалтын горим: товч хэлбэртэй урт хариулт орчуулагдана, богино Next товч хөндөгдөхгүй.
+     iframe доторх асуулт ч орчуулагдана, харин булангийн товч iframe дотор гарахгүй. -->
+<main>
+  <p id="q">Which process group develops the project charter?</p>
+  <div role="radiogroup"><label id="opt1"><input type="radio" name="a"> Initiating</label><label id="opt2"><input type="radio" name="a"> Planning</label></div>
+  <button id="ab">The project manager should escalate the issue to the sponsor</button>
+  <button id="next">Next</button>
+  <iframe src="exam_frame.html" style="width:600px;height:200px"></iframe>
+</main>
+<script src="../../extension/pagetr.js"></script>
+<script>
+let frame = "";
+addEventListener("message", (e) => { frame = String(e.data); });
+setTimeout(() => check([
+  [tr("q").startsWith("MN:"), "асуулт орчуулагдаагүй"],
+  [tr("opt1").startsWith("MN:") && !ui("opt1"), "богино хариултын сонголт орчуулагдаагүй"],
+  [tr("ab").startsWith("MN:"), "товч хэлбэртэй хариулт орчуулагдаагүй"],
+  [!tr("next"), "Next товчийг орчуулсан (хөндөх ёсгүй)"],
+  [frame.startsWith("fq=MN:"), "iframe доторх асуулт орчуулагдаагүй (" + frame + ")"],
+  [frame.endsWith("pill=false"), "булангийн товч iframe дотор гарсан"],
+]), 6000);
+</script>
+</body></html>

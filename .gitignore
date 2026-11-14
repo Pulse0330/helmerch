@@ -1,0 +1,20 @@
+# Хэрэглэгчийн хувийн / програм ажиллах үед үүсдэг файлууд — хэзээ ч бүү илгээ (CLAUDE.md-г үз)
+/gemini_key.txt
+/github_token.txt
+/api_key.txt
+/ui_token.txt
+/message.txt
+/message_shown.txt
+/settings.json
+/usage.json
+/words.json
+/glossary.txt
+/edition.txt
+/hadmal.log
+/helmerch.ico
+/cache/
+/ui-profile/
+*.tmp
+*.part
+__pycache__/
+*.pyc

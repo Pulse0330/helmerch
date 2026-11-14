@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<title>PDF — Хэлмэрч</title>
+<link rel="stylesheet" href="pdf.css">
+</head>
+<body>
+<div id="bar">
+  <span id="name">PDF</span>
+  <span id="pages" class="muted"></span>
+  <span id="ver" class="muted" title="Хэлмэрч хувилбар"></span>
+  <span class="sp"></span>
+  <button id="zout" title="Жижигрүүлэх">−</button>
+  <span id="zoom" class="muted">100%</span>
+  <button id="zin" title="Томруулах">+</button>
+  <select id="mode" title="Орчуулга харуулах хэлбэр">
+    <option value="side">Хажууд нь (эх загвараар)</option>
+    <option value="swap">Монголоор солих</option>
+    <option value="text">Текстээр</option>
+    <option value="off">Орчуулгагүй</option>
+  </select>
+  <button id="better" title="Харагдаж буй хуудсуудыг Gemini-ээр сайжруулах">✨ Сайжруулах</button>
+  <a id="download" class="btn" title="Эх файлыг татах">Татах</a>
+  <button id="original" title="Chrome-ийн өөрийн PDF үзүүлэгчээр нээх">Chrome-оор нээх</button>
+</div>
+<div id="msg"></div>
+<div id="doc"></div>
+<script src="translate.js"></script>
+<script type="module" src="pdfviewer.js"></script>
+</body>
+</html>

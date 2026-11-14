@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Монгол горим</title>
+<script>window.HM_STORE = { pageMode: "mo" };</script>
+<script src="stub.js"></script>
+</head><body>
+<!-- "Монгол" горимд: орчуулсан хэсэг доторх сайтын товч (role=button) харагдаж, дарагдах ёстой.
+     Хуудас class солих бүрт дахин дахин орчуулах (анивчих) ёсгүй. -->
+<main>
+  <p id="q">Which process group includes the <b>developing</b> of the <i>project charter</i> for a new initiative?</p>
+  <p id="p2">Stakeholder engagement is planned during the planning process group. <span id="rb" role="button" style="border:1px solid">Show answer</span></p>
+</main>
+<script src="../../extension/pagetr.js"></script>
+<script>
+setInterval(() => document.querySelector("#q b").classList.toggle("hl"), 700);
+setTimeout(() => {
+  const rb = document.getElementById("rb"), r = rb.getBoundingClientRect();
+  check([
+    [tr("q").startsWith("MN:"), "асуулт орчуулагдаагүй"],
+    [r.width > 0 && r.height > 0, "role=button товч нуугдсан"],
+    [document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === rb, "role=button товч дарагдахгүй"],
+    [__calls.length <= 2, "давтан орчуулсаар байна (анивчих): " + __calls.length + " хүсэлт"],
+  ]);
+}, 8000);
+</script>
+</body></html>

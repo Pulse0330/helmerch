@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<title>Хэлмэрч</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+<header>
+  <img src="icons/48.png" alt="" class="logo">
+  <div class="brand"><b>Хэлмэрч</b><small id="ver">монгол орчуулга</small></div>
+  <span class="st" id="st"><i></i><span>Шалгаж байна…</span></span>
+</header>
+
+<section class="main">
+  <div class="lbl">Вэб хуудсыг орчуулах</div>
+  <div class="seg" id="mode">
+    <button data-m="off">Эх</button>
+    <button data-m="bi">2 хэл</button>
+    <button data-m="mo">Монгол</button>
+  </div>
+  <p class="hint" id="modehint">Хуудсууд өөрчлөгдөхгүй, эх хэлээрээ харагдана.</p>
+  <div class="sty" id="sty">
+    <span>Орчуулгын хэлбэр</span>
+    <div class="mini" id="style">
+      <button data-s="line" title="Зүүн талдаа цэнхэр зураастай">Зураас</button>
+      <button data-s="bg" title="Зөөлөн цэнхэр дэвсгэртэй">Дэвсгэр</button>
+      <button data-s="learn" title="Бүдэг — хулгана аваачихад тодорно. Өөрийгөө шалгахад">Цээжлэх</button>
+    </div>
+  </div>
+  <label class="site" id="uibox"><input type="checkbox" id="uitr"> <span>Цэс, товчийг ч орчуулах (жижиг үсгээр)</span></label>
+  <label class="site" id="exambox" title="Асуулт, хариултын бүх сонголт (товч хэлбэртэй ч), тайлбарыг бүрэн орчуулна"><input type="checkbox" id="exam"> <span>📝 Шалгалтын горим — асуулт, хариулт, тайлбарыг бүгдийг</span></label>
+  <label class="site" id="sitebox" hidden><input type="checkbox" id="never"> <span id="sitetxt">Энэ сайтыг хэзээ ч бүү орчуул</span></label>
+</section>
+
+<section class="list">
+  <div class="it"><span class="ic">🖱️</span><div class="t"><b>Үг дээр орчуулах</b><small id="hovsub">Ctrl дараад хулганаа үг дээр</small></div>
+    <label class="sw"><input type="checkbox" data-s="hover"><i></i></label></div>
+  <div class="it"><span class="ic">✍️</span><div class="t"><b>Сонгосон текст</b><small>Хулганаар сонгоход орчуулга гарна</small></div>
+    <label class="sw"><input type="checkbox" data-s="select"><i></i></label></div>
+  <div class="it"><span class="ic">🎬</span><div class="t"><b>Видео хадмал</b><small>Видеоны «МН» товч эсвэл Alt+M</small></div>
+    <label class="sw"><input type="checkbox" data-s="subs"><i></i></label></div>
+  <div class="it"><span class="ic">📄</span><div class="t"><b>PDF орчуулгатай нээх</b><small>Хүснэгт, загвар хэвээр</small></div>
+    <label class="sw"><input type="checkbox" data-s="pdf"><i></i></label></div>
+</section>
+
+<div class="off" id="upd" style="display:none"></div>
+<div class="off" id="off">Хэлмэрч програм асаагүй байна — Desktop дээрх <b>Хэлмэрч</b> товчлолоор асаана уу.</div>
+
+<footer>
+  <a id="panel">Хажуу самбарт нээх</a>
+  <a id="app">Хэлмэрч цонх ↗</a>
+</footer>
+<script src="popup.js"></script>
+</body>
+</html>
