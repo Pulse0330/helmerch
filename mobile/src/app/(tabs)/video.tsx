@@ -7,7 +7,7 @@ import { settings } from "@/lib/store";
 import { useTheme } from "@/lib/theme";
 import { Btn, Chip } from "@/components/ui";
 import { WebView, type WebViewRef } from "@/web/WebView";
-import { bridgeJs, PAGE_JS, toPage } from "@/web/inject";
+import { bridgeJs, PAGE_JS } from "@/web/inject";
 import { pageStore, useBridge, type PageEvent } from "@/web/bridge";
 import { VIDEO_BEFORE_JS, videoBothJs, youtubeId } from "@/web/video";
 
@@ -31,9 +31,8 @@ export default function Video() {
   const onEvent = useCallback((e: PageEvent) => {
     if (e.kind === "vstatus") setStatus(String(e.text || ""));
     if (e.kind === "vnone") {
-      // хадмалын файл олдсонгүй → дэлгэц дээр гарч буй хадмалыг шууд орчуулах арга руу шилжинэ
-      setStatus("Хадмалыг шууд орчуулж байна — видеоны CC (хадмал) товчийг асаана уу.");
-      web.current?.injectJavaScript(toPage({ kind: "store", data: { subs: true } }));
+      // хадмал олдсонгүй: видеоны CC асаавал дэлгэц дээрх хадмалыг уншиж орчуулна
+      setStatus("Видеоны CC (хадмал) товчийг дарж асаана уу — асаамагц монгол хадмал гарна.");
     }
   }, []);
   const onMessage = useBridge(web, onEvent, false);

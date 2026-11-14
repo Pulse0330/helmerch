@@ -30,7 +30,8 @@ window.ReactNativeWebView = { postMessage(s) {
 <script>${bridgeJs({ pageMode: "off", subs: false, settings: { quality: true } })}</script>
 <script>${VIDEO_BEFORE_JS}</script>
 </head><body style="margin:0">
-<video id="v" width="320" height="180" style="display:block;background:#000"></video>
+<div style="position:relative"><video id="v" width="320" height="180" style="display:block;background:#000"></video>
+<div class="ytp-caption-window-container" style="position:absolute;left:0;right:0;bottom:10px"><span class="ytp-caption-segment" id="cc"></span></div></div>
 <script>
 // тоглуулагч хадмал татаж буй мэт (fetch, json3)
 fetch("data:application/json;src=/api/timedtext," + encodeURIComponent(${JSON.stringify(json3)}));
@@ -49,7 +50,15 @@ setTimeout(() => {
   V.got = false;
   x.onload = () => setTimeout(() => {      // hook-ийн load listener (send дотор нэмэгддэг) дараа нь ажилладаг
     if (V.cues.length !== 2 || V.cues[0].t !== "Hello & welcome") bad.push("xml хадмал задарсангүй: " + JSON.stringify(V.cues));
-    document.body.setAttribute("data-result", bad.length ? "FAIL: " + bad.join("; ") : "PASS");
+    // хүсэлт баригдаагүй ч YouTube-ийн CC дэлгэц дээр гарвал түүнийг уншиж орчуулна
+    V.cues = []; V.got = false;
+    document.getElementById("cc").textContent = "Stay hungry, stay foolish.";
+    setTimeout(() => {
+      const shown = document.querySelector("hm-sub").innerText;
+      if (!/MN:Stay hungry, stay foolish\\./.test(shown)) bad.push("дэлгэцийн хадмалыг орчуулсангүй: " + JSON.stringify(shown));
+      if (!document.documentElement.classList.contains("hm-hide")) bad.push("англи хадмалыг нуусангүй");
+      document.body.setAttribute("data-result", bad.length ? "FAIL: " + bad.join("; ") : "PASS");
+    }, 800);
   }, 200);
   x.send();
 }, 4000);

@@ -46,7 +46,7 @@ export const VIDEO_BEFORE_JS = `(function(){
     if (c.length < 2) return;
     V.got = true; V.cues = tidy(c);
     var lm = /[?&]lang=([\\w-]+)/.exec(url); V.lang = lm ? lm[1] : "";
-    post({ kind: "vstatus", text: "Хадмал олдлоо (" + c.length + " мөр) — орчуулж байна…" });
+    post({ kind: "vstatus", text: "Хадмал олдлоо (" + c.length + " мөр) — урьдчилан орчуулж байна…" });
     translateAll();
   }
 
@@ -104,11 +104,7 @@ export const VIDEO_BEFORE_JS = `(function(){
   // --- YouTube-ийн хадмалыг өөрөө асаах (англи эсвэл байгаа хадмал)
   var tries = 0;
   var tick = setInterval(function(){
-    if (V.got || ++tries > 40) {
-      clearInterval(tick);
-      if (!V.got) post({ kind: "vnone" });
-      return;
-    }
+    if (V.got || ++tries > 40) { clearInterval(tick); return; }
     var p = document.getElementById("movie_player");
     if (!p || !p.getOption) return;
     try {
@@ -121,18 +117,49 @@ export const VIDEO_BEFORE_JS = `(function(){
     } catch (e) {}
   }, 1000);
 
-  // --- монгол хадмалыг видеон дээр харуулах
+  // --- дэлгэц дээр гарч буй хадмал (YouTube-ийн CC асаалттай үед) — хүсэлт баригдаагүй ч эндээс уншина
+  var CAP = ".ytp-caption-segment, .caption-visual-line, .captions-text, .ytp-caption-window-container, .caption-window, [class*='caption-window']";
+  function domCaption(v){
+    var vr = v.getBoundingClientRect(), segs = document.querySelectorAll(".ytp-caption-segment");
+    var parts = [];
+    for (var i = 0; i < segs.length; i++) { var s = (segs[i].textContent || "").trim(); if (s) parts.push(s); }
+    if (parts.length) return parts.join(" ").replace(/\\s+/g, " ");
+    var els = document.querySelectorAll(CAP);
+    for (var j = 0; j < els.length; j++) {
+      if (box && (els[j] === box || box.contains(els[j]))) continue;
+      var r = els[j].getBoundingClientRect(), t = (els[j].textContent || "").replace(/\\s+/g, " ").trim();
+      if (t && t.length < 400 && r.bottom >= vr.top && r.top <= vr.bottom + 40) return t;
+    }
+    return "";
+  }
+  var live = {}, livePending = {}, liveTold = false;
+  function liveMn(text){
+    if (live[text]) return live[text];
+    if (!livePending[text]) {
+      livePending[text] = 1;
+      send([text], false).then(function(r){ var mn = r.results && r.results[0] && r.results[0].mn; if (mn) live[text] = mn; else delete livePending[text]; });
+      if (!liveTold) { liveTold = true; post({ kind: "vstatus", text: "Дэлгэц дээрх хадмалыг орчуулж байна" }); setTimeout(function(){ post({ kind: "vstatus", text: "" }); }, 3000); }
+    }
+    return "";
+  }
+
+  // --- монгол хадмалыг видеон дээр харуулах. Англи хадмалыг зөвхөн монгол нь бэлэн үед нууна («хамт» сонгоогүй бол).
   var css = document.createElement("style");
-  css.textContent = "html:not(.hm-both) .caption-window, html:not(.hm-both) .ytp-caption-window-container," +
-    "html:not(.hm-both) .captions-text{opacity:0!important}";
-  var box = null;
+  css.textContent = "html.hm-hide:not(.hm-both) .caption-window, html.hm-hide:not(.hm-both) .ytp-caption-window-container," +
+    "html.hm-hide:not(.hm-both) .captions-text, html.hm-hide:not(.hm-both) .ytp-caption-segment{opacity:0!important}";
+  var box = null, played = 0, hinted = false;
   function draw(){
     var v = document.querySelector("video");
     if (!css.isConnected && document.head) document.head.appendChild(css);
-    if (!v || !V.cues.length) return;
+    if (!v) return;
     var t = v.currentTime, cue = null;
     for (var i = 0; i < V.cues.length; i++) { if (V.cues[i].s <= t && t < V.cues[i].e + 0.3) cue = V.cues[i]; if (V.cues[i].s > t) break; }
     var mn = cue ? (V.mn[cue.t] || "") : "";
+    if (!mn) { var dc = domCaption(v); if (dc) mn = liveMn(dc); }
+    document.documentElement.classList.toggle("hm-hide", !!mn);
+    // 10 сек тоглуулаад ч хадмал олдохгүй бол CC асаахыг сануулна
+    if (!v.paused) played += 0.2;
+    if (!hinted && played > 10 && !V.got && !liveTold) { hinted = true; post({ kind: "vnone" }); }
     if (!box) {
       box = document.createElement("hm-sub");
       box.style.cssText = "position:fixed;z-index:2147483646;left:0;right:0;pointer-events:none;text-align:center;padding:0 10px";
