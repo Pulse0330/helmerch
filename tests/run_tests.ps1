@@ -57,7 +57,7 @@ if (-not (Test-Path "$mob\node_modules")) { Write-Host "      (mobile\node_modul
   if ($LASTEXITCODE -eq 0) { Ok "lint" } else { Bad "lint — 'cd mobile; npx expo lint'" }
   if ($Chrome) {
     $tmp = Join-Path $env:TEMP ("hm-mob-" + [guid]::NewGuid().ToString("N")); New-Item -ItemType Directory $tmp | Out-Null
-    foreach ($t in "bridge_page", "pdf_page", "video_page", "video_track_page", "safari_tip_page", "cred_page") {
+    foreach ($t in "bridge_page", "pdf_page", "video_page", "video_track_page", "video_switch_page", "safari_tip_page", "cred_page") {
       npx tsx "tests\$t.ts" "$tmp\$t.html" 2>&1 | Out-Null
       $u = "file:///" + ("$tmp\$t.html" -replace '\\', '/')
       $out = & $Chrome --headless=new --disable-gpu --no-first-run --user-data-dir="$tmp\prof" --virtual-time-budget=20000 --dump-dom $u 2>$null | Out-String

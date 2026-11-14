@@ -56,7 +56,35 @@ export const VIDEO_BEFORE_JS = `(function(){
     return best || v;
   }
   window.__hmMainVideo = mainVideo;
+
+  // --- Видео солигдох: YouTube дараагийн видеог хуудсаа дахин ачаалалгүй (SPA) нээдэг, <video> ч хэвээр үлддэг.
+  // Холбоосын видеоны ID өөрчлөгдвөл өмнөх видеоны хадмал, орчуулга, Gemini-ийн явцыг бүгдийг цэвэрлэж шинээр эхэлнэ.
+  function curId(){
+    var m = /[?&]v=([\\w-]{11})/.exec(location.search) || /\\/(?:shorts|live|embed)\\/([\\w-]{11})/.exec(location.pathname);
+    return m ? m[1] : "";
+  }
+  V.vid = curId(); V.sess = 0; V.pending = {}; V.ai = false;
+  function checkVideo(){ var id = curId(); if (id !== V.vid) reset(id); }
+  function reset(id){
+    V.vid = id; V.sess++; S = null; V.ai = false;
+    V.oldSig = sig(V.cues);                                  // хуучин видеоны track-ийг дахин «шинэ» гэж авахгүйн тулд
+    V.cues = []; V.mn = {}; V.got = false; V.diag = { seen: 0, bytes: 0 };
+    if (mnTrack) { try { var cs = mnTrack.cues; while (cs && cs.length) mnTrack.removeCue(cs[0]); } catch (e) {} }
+    cueMap = {}; liveCue = null; lastMn = ""; want = ""; liveTold = false;
+    played = 0; hinted = false; blank = 0; blankTold = false;
+    if (box) box.innerHTML = "";
+    startTick();
+    post({ kind: "vnew" });
+    var p = V.pending[id];                                   // шинэ видеоны хадмал холбоос солигдохоос өмнө ирсэн бол
+    if (p) { delete V.pending[id]; got(p.u, p.t); }
+  }
+  function sig(c){ return (c || []).slice(0, 3).map(function(x){ return x.t; }).join("|"); }
+
   function got(url, text){
+    // хүсэлт аль видеоных вэ — одоогийнх биш бол (хуучин видеоных, эсвэл холбоос хараахан солигдоогүй) тусад нь хадгална
+    var um = /[?&]v=([\\w-]{11})/.exec(String(url || "")), uid = um ? um[1] : "";
+    checkVideo();
+    if (uid && V.vid && uid !== V.vid) { V.pending[uid] = { u: url, t: text }; return; }
     if (V.got) return;
     V.diag.seen++; V.diag.bytes = (text || "").length;
     var c = text ? parse(text) : [];
@@ -116,61 +144,78 @@ export const VIDEO_BEFORE_JS = `(function(){
     return out;
   }
   // 1) Google-ээр маш хурдан: видео зогсохгүй, тоглож буй хэсгээс эхэлж орчуулна (эхний мөрүүд ~0.5 сек).
-  // 2) Хооронд нь Gemini-ээр (мэргэжлийн) мөн тоглож буй хэсгээс урагш орчуулж, бэлэн болсон мөрийг шууд сольно.
-  async function translateAll(){
+  // 2) Gemini (мэргэжлийн) нь ЗӨВХӨН хэрэглэгч «✨ AI-аар сайжруулах» товч дарахад эхэлж, бэлэн болсон мөрийг сольно.
+  // S = одоогийн видеоны орчуулгын явц. Видео солигдоход S шинэчлэгдэж, хуучин явцын хариуг хаяна (alive).
+  var S = null;
+  function alive(s){ return S === s && s.sess === V.sess; }
+  function translateAll(){
     V.preparing = false;
     var total = {};
     V.cues.forEach(function(x){ total[x.t] = 1; });
-    var count = Object.keys(total).length, fastDone = {}, aiDone = {}, fails = 0;
-    google();
-    gemini();
-    async function google(){
-      for (;;) {
-        var part = nextChunk(fastDone, 40);
-        if (!part.length) break;
-        var r = {};
-        for (var a = 0; a < 3 && !r.results; a++) { r = await send(part, false); if (!r.results) await new Promise(function(z){ setTimeout(z, 1500); }); }
-        part.forEach(function(tx, j){
-          fastDone[tx] = 1;
-          var mn = r.results && r.results[j] && r.results[j].mn;
-          if (mn && !aiDone[tx]) V.mn[tx] = mn;                // Gemini-ийнх аль хэдийн байвал дарж бичихгүй
-        });
-        if (V.fill) V.fill();
-      }
-      post({ kind: "vready", count: count });
-    }
-    // Gemini-ийн явцыг апп-д мэдэгдэнэ (видеоны дээд талд «✨ Gemini 45%» → «✨ Gemini ✓ дууссан»)
-    // Gemini (хурдан lite загвар): Google руу нуугдмал шилжихгүй — бүтэхгүй бол шалтгааныг апп-д хэлээд,
-    // хязгаар бол 1 мин, сүлжээ бол 10 сек хүлээгээд үргэлжилнэ; түлхүүргүй/буруу бол зогсоно.
-    function sendAI(texts){
-      return new Promise(function(res){
-        chrome.runtime.sendMessage({ type: "translateAI", texts: texts, prefer: "gemini",
-          context: "Video subtitles: " + document.title.slice(0, 100) }, function(r){ res(r || {}); });
-      });
-    }
-    async function gemini(){
-      await new Promise(function(z){ setTimeout(z, 600); });   // эхний Google мөрүүд түрүүлж гарна
-      var n = function(){ return Object.keys(aiDone).length; };
-      post({ kind: "vai", state: "progress", done: 0, total: count });
-      for (;;) {
-        var q = nextChunk(aiDone, 20);
-        if (!q.length) break;
-        var rq = await sendAI(q);
-        if (!rq.results) {
-          var why = rq.reason || "other";
-          post({ kind: "vai", state: "error", reason: why, done: n(), total: count });
-          if (why === "nokey" || why === "badkey" || ++fails > 8) return;
-          await new Promise(function(z){ setTimeout(z, why === "limit" ? 60000 : 10000); });
-          continue;
-        }
-        fails = 0;
-        q.forEach(function(tx, j){ aiDone[tx] = 1; var mn = rq.results[j] && rq.results[j].mn; if (mn) V.mn[tx] = mn; });
-        if (V.fill) V.fill();                                   // track-ийн мөрүүдийг ч сольно
-        post({ kind: "vai", state: "progress", done: n(), total: count });
-      }
-      post({ kind: "vai", state: "done", done: n(), total: count });
-    }
+    var s = S = { sess: V.sess, count: Object.keys(total).length, fastDone: {}, aiDone: {}, aiRunning: false };
+    google(s);
+    if (V.ai) gemini(s);                                      // товчийг хадмал бэлэн болохоос өмнө дарсан бол
   }
+  async function google(s){
+    for (;;) {
+      var part = nextChunk(s.fastDone, 40);
+      if (!part.length) break;
+      var r = {};
+      for (var a = 0; a < 3 && !r.results; a++) {
+        r = await send(part, false);
+        if (!alive(s)) return;
+        if (!r.results) await new Promise(function(z){ setTimeout(z, 1500); });
+      }
+      part.forEach(function(tx, j){
+        s.fastDone[tx] = 1;
+        var mn = r.results && r.results[j] && r.results[j].mn;
+        if (mn && !s.aiDone[tx]) V.mn[tx] = mn;                // Gemini-ийнх аль хэдийн байвал дарж бичихгүй
+      });
+      if (V.fill) V.fill();
+    }
+    post({ kind: "vready", count: s.count });
+  }
+  // Gemini-ийн явцыг апп-д мэдэгдэнэ (видеоны дээд талд «✨ Gemini 45%» → «✨ Gemini ✓ дууссан»)
+  // Google руу нуугдмал шилжихгүй — бүтэхгүй бол шалтгааныг апп-д хэлээд,
+  // хязгаар бол 1 мин, сүлжээ бол 10 сек хүлээгээд үргэлжилнэ; түлхүүргүй/буруу бол зогсоно.
+  function sendAI(texts){
+    return new Promise(function(res){
+      chrome.runtime.sendMessage({ type: "translateAI", texts: texts, prefer: "gemini",
+        context: "Video subtitles: " + document.title.slice(0, 100) }, function(r){ res(r || {}); });
+    });
+  }
+  async function gemini(s){
+    if (s.aiRunning) return;
+    s.aiRunning = true;
+    var n = function(){ return Object.keys(s.aiDone).length; }, fails = 0;
+    post({ kind: "vai", state: "progress", done: 0, total: s.count });
+    for (;;) {
+      var q = nextChunk(s.aiDone, 20);
+      if (!q.length) break;
+      var rq = await sendAI(q);
+      if (!alive(s)) return;                                  // видео солигдсон — хуучин хариуг хаяна
+      if (!rq.results) {
+        var why = rq.reason || "other";
+        post({ kind: "vai", state: "error", reason: why, done: n(), total: s.count });
+        if (why === "nokey" || why === "badkey" || ++fails > 8) { s.aiRunning = false; return; }
+        await new Promise(function(z){ setTimeout(z, why === "limit" ? 60000 : 10000); });
+        if (!alive(s)) return;
+        continue;
+      }
+      fails = 0;
+      q.forEach(function(tx, j){ s.aiDone[tx] = 1; var mn = rq.results[j] && rq.results[j].mn; if (mn) V.mn[tx] = mn; });
+      if (V.fill) V.fill();                                   // track-ийн мөрүүдийг ч сольно
+      post({ kind: "vai", state: "progress", done: n(), total: s.count });
+    }
+    post({ kind: "vai", state: "done", done: n(), total: s.count });
+  }
+  // апп-ын «✨ AI-аар сайжруулах» товч
+  window.__hmAI = function(){
+    checkVideo();
+    V.ai = true;
+    if (S && alive(S)) gemini(S);
+    else post({ kind: "vai", state: "wait" });                // хадмал бэлэн болмогц эхэлнэ
+  };
 
   // --- YouTube-ийн хадмалын өгөгдлийг ачаалах (англи эсвэл байгаа хадмал). Дэлгэцэнд нь CSS-ээр нуугдана.
   function loadTrack(){
@@ -186,12 +231,17 @@ export const VIDEO_BEFORE_JS = `(function(){
     } catch (e) {}
     return false;
   }
-  var tries = 0, loaded = false;
-  var tick = setInterval(function(){
-    if (!V.on) return;
-    if ((loaded && V.got) || ++tries > 60) { clearInterval(tick); return; }
-    if (loadTrack()) loaded = true;
-  }, 1000);
+  var tries = 0, loaded = false, tick = null;
+  function startTick(){
+    if (tick) clearInterval(tick);
+    tries = 0; loaded = false;
+    tick = setInterval(function(){
+      if (!V.on) return;
+      if ((loaded && V.got) || ++tries > 60) { clearInterval(tick); tick = null; return; }
+      if (loadTrack()) loaded = true;
+    }, 1000);
+  }
+  startTick();
   // YouTube-ийн CC-г хэрэглэгч унтраасан ч «МН хадмал» асаалттай бол хадмалын өгөгдлийг ар талд дахин асаана
   // (англи хадмал CSS-ээр нуугдмал тул дэлгэцэнд гарахгүй) — бүтэн хадмал баригдаагүй үед дэлгэцээс уншихад хэрэгтэй.
   setInterval(function(){
@@ -294,7 +344,9 @@ export const VIDEO_BEFORE_JS = `(function(){
         var q = tr.cues[j], s = (q.text || "").replace(/<[^>]+>/g, "").replace(/\\s+/g, " ").trim();
         if (s) c.push({ s: q.startTime, e: q.endTime, t: s });
       }
-      if (c.length > 2) { V.got = true; V.cues = tidy(c); translateAll(); return; }
+      c = tidy(c);
+      if (V.oldSig && sig(c) === V.oldSig) continue;           // өмнөх видеоны track (хараахан солигдоогүй)
+      if (c.length > 2) { V.got = true; V.cues = c; translateAll(); return; }
     }
   }
   // YouTube-ийн track-ийн одоо гарч буй мөр (бүтэн дэлгэцэнд DOM хадмал байхгүй)
@@ -311,6 +363,7 @@ export const VIDEO_BEFORE_JS = `(function(){
 
   var box = null, played = 0, hinted = false, blank = 0, blankTold = false;
   function draw(){
+    checkVideo();
     var v = mainVideo();
     if (!css.isConnected && document.head) document.head.appendChild(css);
     if (!v || !V.on) { if (box) box.innerHTML = ""; if (mnTrack && mnTrack.mode !== "hidden") mnTrack.mode = "hidden"; return; }
@@ -369,3 +422,5 @@ export const VIDEO_BEFORE_JS = `(function(){
 export const videoBothJs = (on: boolean) => `document.documentElement.classList.toggle("hm-both", ${on});true;`;
 // апп-аас: «МН хадмал» асаах / унтраах
 export const videoSubsJs = (on: boolean) => `window.__hmSubs && window.__hmSubs(${on});true;`;
+// апп-аас: «✨ AI-аар сайжруулах» — одоогийн видеоны хадмалыг Gemini-ээр орчуулж эхэлнэ
+export const videoAIJs = `window.__hmAI && window.__hmAI();true;`;

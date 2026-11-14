@@ -30,4 +30,5 @@ if (!/[Ѐ-ӿ]/.test(w.results?.[0]?.mn || "")) bad.push("үг орчуулга: 
 console.log("текст:", t.tier, t.results?.map((r) => r.mn).join(" | "));
 console.log("үг:", w.results?.[0]?.mn, (w.results?.[0]?.alts || []).slice(0, 2).map((a) => a.pos + ": " + a.terms.slice(0, 3).join(", ")).join("; "));
 console.log(bad.length ? "FAIL: " + bad.join("; ") : "PASS");
-process.exit(bad.length ? 1 : 0);
+// process.exit() нээлттэй fetch холболттой үед Windows-ийн Node-д заримдаа унадаг (libuv assertion) — өөрөө дуусгана
+process.exitCode = bad.length ? 1 : 0;

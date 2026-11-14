@@ -37,6 +37,8 @@ window.ReactNativeWebView = { postMessage(s) {
 <div class="ytp-caption-window-container" style="position:absolute;left:0;right:0;bottom:10px"><span class="ytp-caption-segment" id="cc"></span></div></div>
 <script>
 // тоглуулагч хадмал татаж буй мэт (fetch, json3)
+// «✨ AI-аар сайжруулах»-ыг хадмал ирэхээс өмнө дарсан → бэлэн болмогц Gemini эхлэх ёстой
+window.__hmAI();
 fetch("data:application/json;src=/api/timedtext," + encodeURIComponent(${JSON.stringify(json3)}));
 const v = document.getElementById("v");
 setTimeout(() => { v.currentTime = 3; }, 1500);

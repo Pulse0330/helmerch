@@ -1,7 +1,7 @@
 // Видео: YouTube (эсвэл бусад сайтын) холбоосыг буулгахад видео апп дотор монгол хадмалтай тоглоно.
 // YouTube апп → Share → Copy link → энд «Буулгах».
 import { useCallback, useMemo, useRef, useState } from "react";
-import { Keyboard, StyleSheet, Text, TextInput, View } from "react-native";
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { settings } from "@/lib/store";
 import { useTheme } from "@/lib/theme";
@@ -9,7 +9,7 @@ import { Btn, Chip } from "@/components/ui";
 import { WebView, type WebViewRef } from "@/web/WebView";
 import { bridgeJs, PAGE_JS } from "@/web/inject";
 import { pageStore, useBridge, type PageEvent } from "@/web/bridge";
-import { VIDEO_BEFORE_JS, videoBothJs, videoSubsJs, youtubeId } from "@/web/video";
+import { VIDEO_BEFORE_JS, videoAIJs, videoBothJs, videoSubsJs, youtubeId } from "@/web/video";
 
 function toVideoUrl(link: string): string | null {
   const s = link.trim();
@@ -35,7 +35,8 @@ export default function Video() {
     if (e.kind === "vai") {
       const done = Number(e.done) || 0, total = Number(e.total) || 1;
       const pct = Math.min(99, Math.round((100 * done) / total));
-      if (e.state === "progress") setAi(`✨ Gemini ${pct}%`);
+      if (e.state === "wait") setAi("✨ Хадмал бэлэн болмогц Gemini эхэлнэ…");
+      else if (e.state === "progress") setAi(`✨ Gemini ${pct}%`);
       else if (e.state === "done") setAi("✨ Gemini ✓ дууссан");
       else {
         const why: Record<string, string> = {
@@ -48,6 +49,8 @@ export default function Video() {
         setAi(why[String(e.reason)] || why.other);
       }
     }
+    // YouTube дараагийн видеог нээсэн — өмнөх видеоны төлөв (Gemini ✓ гэх мэт) арилна, AI товч дахин гарна
+    if (e.kind === "vnew") { setAi(""); setStatus("Шинэ видео — хадмал бэлдэж байна…"); }
     if (e.kind === "vready") {
       setStatus(`✓ Хадмал бэлэн (${e.count} мөр)`);
       setTimeout(() => setStatus((s) => (s.startsWith("✓") ? "" : s)), 2500);
@@ -105,6 +108,12 @@ export default function Video() {
       </View>
       {ai ? (
         <Text style={[styles.ai, { backgroundColor: t.card, color: ai.includes("✓") ? t.ok : ai.startsWith("✨") ? t.accent : t.muted }]}>{ai}</Text>
+      ) : subsOn ? (
+        // Gemini зөвхөн энэ товчийг дарахад ажиллана (видео бүрд тусдаа)
+        <Pressable onPress={() => { setAi("✨ Gemini эхэлж байна…"); web.current?.injectJavaScript(videoAIJs); }}
+          style={[styles.aiBtn, { backgroundColor: t.card, borderBottomColor: t.line }]}>
+          <Text style={{ color: t.accent, fontWeight: "700", fontSize: 13.5 }}>✨ AI-аар сайжруулах (Gemini)</Text>
+        </Pressable>
       ) : null}
       {status ? <Text style={[styles.status, { backgroundColor: t.accentSoft, color: t.text }]}>{status}</Text> : null}
       <WebView
@@ -129,4 +138,5 @@ const styles = StyleSheet.create({
   bar: { flexDirection: "row", gap: 8, padding: 8, borderBottomWidth: StyleSheet.hairlineWidth },
   status: { fontSize: 13, paddingHorizontal: 12, paddingVertical: 6 },
   ai: { fontSize: 12.5, fontWeight: "600", paddingHorizontal: 12, paddingVertical: 5 },
+  aiBtn: { paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth },
 });
