@@ -20,6 +20,7 @@ const html = `<!doctype html><html><head><meta charset="utf-8">
 window.__events = [];
 window.ReactNativeWebView = { postMessage(s) {
   const m = JSON.parse(s);
+  if (m.kind === "vai") (window.__vai = window.__vai || []).push(m);
   if (m.kind !== "req") { __events.push(m.kind); return; }
   setTimeout(() => {
     const data = { results: m.msg.texts.map((t) => ({ mn: (m.msg.quality ? "AI:" : "MN:") + t })), tier: m.msg.quality ? "pro" : "google", ai: !!m.msg.quality };
@@ -47,8 +48,8 @@ setTimeout(() => {
   if (!${idOk}) bad.push("YouTube холбоосоос ID таньсангүй");
   if (!V.got || V.cues.length !== 3) bad.push("хадмал баригдсангүй (" + V.cues.length + ")");
   if (!/AI:I am honored to be with you today\\./.test(at3)) bad.push("3-р секундэд буруу хадмал: " + JSON.stringify(at3));
-  if (!__events.includes("vstatus")) bad.push("төлөв апп руу очсонгүй");
   if (!__events.includes("vready")) bad.push("бүх хадмал бэлэн болсныг мэдэгдсэнгүй");
+  if (!__vai.some((e) => e.state === "done" && e.done === 3 && e.total === 3)) bad.push("Gemini дууссаныг мэдэгдсэнгүй: " + JSON.stringify(__vai));
   if (V.preparing) bad.push("бэлдэж дуусаагүй");
   // XML (srv1) хэлбэр
   const x = new XMLHttpRequest(); x.open("GET", "data:text/xml;src=/api/timedtext," + encodeURIComponent('<transcript><text start="0.5" dur="1.5">Hello &amp; welcome</text><text start="2" dur="2">Second line</text></transcript>'));

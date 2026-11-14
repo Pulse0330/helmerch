@@ -139,22 +139,28 @@ export const VIDEO_BEFORE_JS = `(function(){
       }
       post({ kind: "vready", count: count });
     }
+    // Gemini-ийн явцыг апп-д мэдэгдэнэ (видеоны дээд талд «✨ Gemini 45%» → «✨ Gemini ✓ дууссан»)
     async function gemini(){
       await new Promise(function(z){ setTimeout(z, 600); });   // эхний Google мөрүүд түрүүлж гарна
-      var told = false;
+      var n = function(){ return Object.keys(aiDone).length; };
+      post({ kind: "vai", state: "progress", done: 0, total: count });
       for (;;) {
         var q = nextChunk(aiDone, 25);
         if (!q.length) break;
         var rq = await send(q, true);
         if (!rq.results || rq.ai === false) {                   // түлхүүргүй эсвэл хязгаар дүүрсэн — Google хэвээр
-          if (rq.ai === false || ++fails > 3) break;
+          if (rq.ai === false || ++fails > 3) {
+            post({ kind: "vai", state: "stopped", done: n(), total: count, nokey: n() === 0 && rq.ai === false });
+            return;
+          }
           await new Promise(function(z){ setTimeout(z, 5000); });
           continue;
         }
         q.forEach(function(tx, j){ aiDone[tx] = 1; var mn = rq.results[j] && rq.results[j].mn; if (mn) V.mn[tx] = mn; });
         if (V.fill) V.fill();                                   // track-ийн мөрүүдийг ч сольно
-        if (!told) { told = true; post({ kind: "vstatus", text: "✨ Gemini орчуулга орж байна" }); setTimeout(function(){ post({ kind: "vstatus", text: "" }); }, 2500); }
+        post({ kind: "vai", state: "progress", done: n(), total: count });
       }
+      post({ kind: "vai", state: "done", done: n(), total: count });
     }
   }
 

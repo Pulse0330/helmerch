@@ -27,10 +27,17 @@ export default function Video() {
   const [status, setStatus] = useState("");
   const [both, setBoth] = useState(false);
   const [subsOn, setSubsOn] = useState(true);
+  const [ai, setAi] = useState("");                     // Gemini-ийн явц: «✨ Gemini 45%» / «✓ дууссан»
   const [note, setNote] = useState("");
 
   const onEvent = useCallback((e: PageEvent) => {
     if (e.kind === "vstatus") setStatus(String(e.text || ""));
+    if (e.kind === "vai") {
+      const done = Number(e.done) || 0, total = Number(e.total) || 1;
+      if (e.state === "progress") setAi(`✨ Gemini ${Math.min(99, Math.round((100 * done) / total))}%`);
+      else if (e.state === "done") setAi("✨ Gemini ✓ дууссан");
+      else setAi(e.nokey ? "Gemini: түлхүүргүй (Тохиргоо)" : `Gemini: хязгаар дүүрсэн (${Math.round((100 * done) / total)}%)`);
+    }
     if (e.kind === "vready") {
       setStatus(`✓ Хадмал бэлэн (${e.count} мөр)`);
       setTimeout(() => setStatus((s) => (s.startsWith("✓") ? "" : s)), 2500);
@@ -81,11 +88,14 @@ export default function Video() {
   return (
     <View style={{ flex: 1, backgroundColor: "#000" }}>
       <View style={[styles.bar, { backgroundColor: t.card, borderBottomColor: t.line }]}>
-        <Chip label="← Өөр видео" on={false} onPress={() => { setUrl(null); setStatus(""); setSubsOn(true); setBoth(false); }} />
+        <Chip label="← Өөр видео" on={false} onPress={() => { setUrl(null); setStatus(""); setAi(""); setSubsOn(true); setBoth(false); }} />
         <Chip label={subsOn ? "МН хадмал: асаалттай" : "МН хадмал асаах"} on={subsOn}
           onPress={() => { setSubsOn(!subsOn); web.current?.injectJavaScript(videoSubsJs(!subsOn)); }} />
         {subsOn ? <Chip label="Англи хамт" on={both} onPress={() => { setBoth(!both); web.current?.injectJavaScript(videoBothJs(!both)); }} /> : null}
       </View>
+      {ai ? (
+        <Text style={[styles.ai, { backgroundColor: t.card, color: ai.includes("✓") ? t.ok : ai.startsWith("✨") ? t.accent : t.muted }]}>{ai}</Text>
+      ) : null}
       {status ? <Text style={[styles.status, { backgroundColor: t.accentSoft, color: t.text }]}>{status}</Text> : null}
       <WebView
         ref={web}
@@ -108,4 +118,5 @@ const styles = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, fontSize: 15 },
   bar: { flexDirection: "row", gap: 8, padding: 8, borderBottomWidth: StyleSheet.hairlineWidth },
   status: { fontSize: 13, paddingHorizontal: 12, paddingVertical: 6 },
+  ai: { fontSize: 12.5, fontWeight: "600", paddingHorizontal: 12, paddingVertical: 5 },
 });
