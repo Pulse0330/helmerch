@@ -5,7 +5,7 @@ import { File, Paths } from "expo-file-system";
 import * as SecureStore from "expo-secure-store";
 
 // ---------------------------------------------------------------- JSON файл
-function jsonFile<T>(name: string, fallback: T) {
+export function jsonFile<T>(name: string, fallback: T) {
   const file = new File(Paths.document, name);
   let timer: ReturnType<typeof setTimeout> | null = null;
   return {
@@ -34,7 +34,7 @@ function jsonFile<T>(name: string, fallback: T) {
 }
 
 // ---------------------------------------------------------------- энгийн дэлгүүр (React-д холбогдоно)
-function createStore<T extends object>(initial: T) {
+export function createStore<T extends object>(initial: T) {
   let state = initial;
   const subs = new Set<() => void>();
   return {

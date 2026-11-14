@@ -148,5 +148,61 @@ const TOOLS_JS = `(function(){
   }, 400);
 })();true;`;
 
-// хуудас ачаалагдсаны дараа: pagetr.js + утасны нэмэлтүүд
-export const PAGE_JS = PAGETR_JS + "\n;" + TOOLS_JS;
+// Нэвтрэх маягт: хэрэглэгч нэвтрэхэд нэр/нууц үгийг апп руу (зөвхөн утасны Keychain-д хадгалахыг асуухад) өгнө,
+// хуудсанд нууц үгийн талбар байгааг мэдэгдэнэ (апп «🔑 Нэвтрэх» товч гаргана). Үндсэн хуудсанд л.
+const CRED_JS = `(function(){
+  if (window.__hmCred || window !== window.top) return; window.__hmCred = true;
+  var post = window.__hmPost;
+  var vis = function(el){ var r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  var textish = function(i){ return /^(text|email|tel|)$/.test((i.getAttribute("type") || "").toLowerCase()); };
+  var lastUser = "";
+  // хоёр шаттай нэвтрэлт (эхлээд имэйл, дараа нь нууц үг): сүүлд бичсэн нэрийг санана
+  document.addEventListener("change", function(e){
+    var i = e.target;
+    if (i && i.tagName === "INPUT" && textish(i) && /user|mail|login|name|phone|id/i.test((i.name || "") + (i.id || "") + (i.autocomplete || "") + (i.type || ""))) lastUser = i.value;
+  }, true);
+  var sent = "";
+  function grab(root){
+    var pw = [].filter.call((root || document).querySelectorAll("input[type=password]"), function(i){ return i.value; })[0];
+    if (!pw) return;
+    var ins = [].filter.call((pw.form || root || document).querySelectorAll("input"), function(i){ return textish(i) && i.value && vis(i); });
+    var before = ins.filter(function(i){ return i.compareDocumentPosition(pw) & 4; });
+    var user = (before[before.length - 1] || ins[0] || {}).value || lastUser;
+    var key = location.hostname + "|" + user + "|" + pw.value;
+    if (key === sent) return;
+    sent = key;
+    post({ kind: "cred", host: location.hostname.replace(/^www\\./, ""), user: user, pass: pw.value });
+  }
+  document.addEventListener("submit", function(e){ grab(e.target); }, true);
+  document.addEventListener("click", function(e){
+    var b = e.target && e.target.closest && e.target.closest("button,input[type=submit],[role=button],a");
+    if (b) setTimeout(function(){ grab(b.form || b.closest("form") || document); }, 0);
+  }, true);
+  document.addEventListener("keydown", function(e){
+    if (e.key === "Enter" && e.target && e.target.type === "password") setTimeout(function(){ grab(e.target.form || document); }, 0);
+  }, true);
+  // нууц үгийн талбар гарч ирвэл апп-д мэдэгдэнэ (SPA-д хожуу гарч ирж болно)
+  var told = false, n = 0;
+  var t = setInterval(function(){
+    var has = [].some.call(document.querySelectorAll("input[type=password]"), vis);
+    if (has !== told) { told = has; post({ kind: "haspw", host: location.hostname.replace(/^www\\./, ""), has: has }); }
+    if (++n > 120) clearInterval(t);
+  }, 1000);
+})();true;`;
+
+// хадгалсан нэвтрэх мэдээллийг талбарт бөглөнө (React/Vue-д ч ажиллахаар input/change үйл явдалтай)
+export const fillCredJs = (user: string, pass: string) => `(function(u, p){
+  var vis = function(el){ var r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  function set(el, v){ var d = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), "value"); d.set.call(el, v);
+    el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); }
+  var pw = [].filter.call(document.querySelectorAll("input[type=password]"), vis)[0];
+  var scope = (pw && pw.form) || document;
+  var ins = [].filter.call(scope.querySelectorAll("input"), function(i){ return /^(text|email|tel|)$/.test((i.getAttribute("type") || "").toLowerCase()) && vis(i); });
+  var before = pw ? ins.filter(function(i){ return i.compareDocumentPosition(pw) & 4; }) : ins;
+  var user = before[before.length - 1] || ins[0];
+  if (user && u) set(user, u);
+  if (pw) { set(pw, p); pw.focus(); }
+})(${JSON.stringify(user)}, ${JSON.stringify(pass)});true;`;
+
+// хуудас ачаалагдсаны дараа: pagetr.js + утасны нэмэлтүүд + нэвтрэх маягт
+export const PAGE_JS = PAGETR_JS + "\n;" + TOOLS_JS + "\n;" + CRED_JS;

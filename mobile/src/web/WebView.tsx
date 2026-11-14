@@ -27,6 +27,9 @@ type Props = {
   allowsInlineMediaPlayback?: boolean;
   mediaPlaybackRequiresUserAction?: boolean;
   pullToRefreshEnabled?: boolean;
+  sharedCookiesEnabled?: boolean;
+  thirdPartyCookiesEnabled?: boolean;
+  domStorageEnabled?: boolean;
   decelerationRate?: "normal" | "fast" | number;
 };
 

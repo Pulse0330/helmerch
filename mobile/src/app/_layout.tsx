@@ -2,9 +2,11 @@ import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { loadKeys } from "@/lib/store";
+import { loadPasswordIndex } from "@/lib/passwords";
 
 export default function RootLayout() {
-  useEffect(() => { loadKeys(); }, []);    // AI түлхүүрүүдийг Keychain/Keystore-оос уншина
+  // AI түлхүүрүүд, хадгалсан нэвтрэлтийн жагсаалтыг Keychain/Keystore-оос уншина
+  useEffect(() => { loadKeys(); loadPasswordIndex(); }, []);
   return (
     <>
       <StatusBar style="auto" />

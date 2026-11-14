@@ -5,6 +5,7 @@ import Constants from "expo-constants";
 import { saveKey, settings, useKeys, useSettings, type KeyName } from "@/lib/store";
 import { useTheme, type Theme } from "@/lib/theme";
 import { testProvider } from "@/lib/translator";
+import { deleteCred, useSavedHosts } from "@/lib/passwords";
 import { Btn, Card } from "@/components/ui";
 import { EXTENSION_VERSION } from "@/web/extension.generated";
 
@@ -95,6 +96,7 @@ function Row({ title, sub, value, onChange, t }: { title: string; sub?: string; 
 export default function SettingsScreen() {
   const t = useTheme();
   const s = useSettings();
+  const { hosts } = useSavedHosts();
   return (
     <ScrollView style={{ backgroundColor: t.bg }} contentContainerStyle={{ padding: 14, gap: 12 }}>
       <Text style={[styles.h2, { color: t.muted }]}>AI ТҮЛХҮҮРҮҮД</Text>
@@ -112,6 +114,21 @@ export default function SettingsScreen() {
           value={s.proTerms} onChange={(v) => settings.set({ proTerms: v })} />
         <Row t={t} title="Цэс, товчийг ч орчуулах" sub="«2 хэл» горимд жижиг үсгээр"
           value={s.uiTr} onChange={(v) => settings.set({ uiTr: v })} />
+      </Card>
+
+      <Text style={[styles.h2, { color: t.muted }]}>ХАДГАЛСАН НЭВТРЭЛТ</Text>
+      <Card style={{ paddingVertical: hosts.length ? 4 : 14 }}>
+        {hosts.length ? hosts.map((h, i) => (
+          <View key={h} style={[styles.row, i === 0 && { borderTopWidth: 0 }, { borderTopColor: t.line }]}>
+            <Text style={{ flex: 1, color: t.text, fontSize: 15 }}>🔑 {h}</Text>
+            <Pressable hitSlop={8} onPress={() => Alert.alert(`«${h}»-ийн нэвтрэлтийг устгах уу?`, "", [
+              { text: "Болих", style: "cancel" }, { text: "Устгах", style: "destructive", onPress: () => deleteCred(h) }])}>
+              <Text style={{ color: t.danger }}>Устгах</Text>
+            </Pressable>
+          </View>
+        )) : (
+          <Text style={{ color: t.muted }}>Хөтөч дээр сайтад нэвтрэхэд «Хадгалах уу?» гэж асууна. Хадгалсан нэвтрэлт зөвхөн энэ утасны нууц санд байна.</Text>
+        )}
       </Card>
 
       <Text style={[styles.h2, { color: t.muted }]}>ЯМАР Ч АПП ДЭЭР (SHARE ЦЭС)</Text>
