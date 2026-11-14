@@ -35,23 +35,54 @@
     host.style.display = "block";
   }
 
+  async function run(text) {
+    if (!text || text === last || text.length < 2 || text.length > 3000 || !/\p{L}/u.test(text)) return;
+    last = text;
+    const my = ++seq, single = !/\s/.test(text) && text.length < 40;
+    show(text, "");
+    try {
+      const r = await api.runtime.sendMessage({ type: "translate", kind: single ? "word" : "text", texts: [text], quality: !single });
+      const mn = r && r.results && r.results[0] && r.results[0].mn;
+      if (my !== seq) return;
+      if (mn) show(text, mn); else hide();
+    } catch (e) { if (my === seq) hide(); }
+  }
+
+  // текст сонгоход (удаан дарж сонгох, сонголтоо сунгах)
   let t = 0;
   document.addEventListener("selectionchange", () => {
     clearTimeout(t);
-    t = setTimeout(async () => {
+    t = setTimeout(() => {
       const sel = window.getSelection();
       if (sel && host && sel.anchorNode && host.contains(sel.anchorNode)) return;
-      const text = sel ? String(sel).replace(/\s+/g, " ").trim() : "";
-      if (!text || text === last || text.length < 2 || text.length > 3000 || !/\p{L}/u.test(text)) return;
-      last = text;
-      const my = ++seq, single = !/\s/.test(text) && text.length < 40;
-      show(text, "");
-      try {
-        const r = await api.runtime.sendMessage({ type: "translate", kind: single ? "word" : "text", texts: [text], quality: !single });
-        const mn = r && r.results && r.results[0] && r.results[0].mn;
-        if (my !== seq) return;
-        if (mn) show(text, mn); else hide();
-      } catch (e) { if (my === seq) hide(); }
+      run(sel ? String(sel).replace(/\s+/g, " ").trim() : "");
     }, 700);
   });
+
+  // удаан дарах (~0.45 сек): хуруун доорх үгийн орчуулга шууд гарна (холбоос, товч дээр ч)
+  function wordAt(x, y) {
+    if (!document.caretRangeFromPoint) return "";
+    const r = document.caretRangeFromPoint(x, y);
+    if (!r || !r.startContainer || r.startContainer.nodeType !== 3) return "";
+    const txt = r.startContainer.data, W = /[A-Za-z'\-]/;
+    let a = r.startOffset, b = r.startOffset;
+    while (a > 0 && W.test(txt[a - 1])) a--;
+    while (b < txt.length && W.test(txt[b])) b++;
+    const w = txt.slice(a, b).replace(/^['\-]+|['\-]+$/g, "");
+    return w.length >= 2 ? w : "";
+  }
+  let lp = 0, sx = 0, sy = 0;
+  const opt = { passive: true, capture: true };
+  document.addEventListener("touchstart", (e) => {
+    clearTimeout(lp);
+    if (e.touches.length !== 1 || (host && host.contains(e.target))) return;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    lp = setTimeout(() => run(wordAt(sx, sy)), 450);
+  }, opt);
+  document.addEventListener("touchmove", (e) => {
+    const p = e.touches[0];
+    if (p && (Math.abs(p.clientX - sx) > 10 || Math.abs(p.clientY - sy) > 10)) clearTimeout(lp);   // гүйлгэж байна
+  }, opt);
+  document.addEventListener("touchend", () => clearTimeout(lp), opt);
+  document.addEventListener("touchcancel", () => clearTimeout(lp), opt);
 })();

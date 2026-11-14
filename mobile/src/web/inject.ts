@@ -50,19 +50,44 @@ const TOOLS_JS = `(function(){
     }, 700);
   });
 
-  // --- «Үг» горим: үг дээр дарахад орчуулна (холбоос руу шилжихгүй)
-  document.addEventListener("click", function(e){
-    if (!get("wordTap") || !document.caretRangeFromPoint) return;
-    var r = document.caretRangeFromPoint(e.clientX, e.clientY);
-    if (!r || !r.startContainer || r.startContainer.nodeType !== 3) return;
+  // хуруу байгаа цэг дээрх англи үг
+  function wordAt(x, y){
+    if (!document.caretRangeFromPoint) return "";
+    var r = document.caretRangeFromPoint(x, y);
+    if (!r || !r.startContainer || r.startContainer.nodeType !== 3) return "";
     var txt = r.startContainer.data, a = r.startOffset, b = r.startOffset, W = /[A-Za-z'\\-]/;
     while (a > 0 && W.test(txt[a - 1])) a--;
     while (b < txt.length && W.test(txt[b])) b++;
     var w = txt.slice(a, b).replace(/^['\\-]+|['\\-]+$/g, "");
-    if (w.length < 2) return;
+    return w.length >= 2 ? w : "";
+  }
+
+  // --- «Үг» горим: үг дээр дарахад орчуулна (холбоос руу шилжихгүй)
+  document.addEventListener("click", function(e){
+    if (!get("wordTap")) return;
+    var w = wordAt(e.clientX, e.clientY);
+    if (!w) return;
     e.preventDefault(); e.stopPropagation();
     post({ kind: "word", word: w });
   }, true);
+
+  // --- удаан дарах (~0.45 сек): тэр үгийн орчуулга шууд гарна (холбоос, товч дээр ч)
+  var lp = 0, sx = 0, sy = 0;
+  document.addEventListener("touchstart", function(e){
+    clearTimeout(lp);
+    if (e.touches.length !== 1) return;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    lp = setTimeout(function(){
+      var w = wordAt(sx, sy);
+      if (w) { lastSel = w; post({ kind: "word", word: w }); }    // дараа нь iPhone тэр үгийг сонгоход давхар гаргахгүй
+    }, 450);
+  }, { passive: true, capture: true });
+  document.addEventListener("touchmove", function(e){
+    var t = e.touches[0];
+    if (t && (Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10)) clearTimeout(lp);   // гүйлгэж байна
+  }, { passive: true, capture: true });
+  document.addEventListener("touchend", function(){ clearTimeout(lp); }, { passive: true, capture: true });
+  document.addEventListener("touchcancel", function(){ clearTimeout(lp); }, { passive: true, capture: true });
 
   // --- видео хадмал: сайтын өөрийнх нь хадмалыг (англи) уншиж монголоор видеон дээр харуулна
   var CAP = ".ytp-caption-segment, .captions-text, .player-timedtext, .vjs-text-track-display, .plyr__captions, " +
