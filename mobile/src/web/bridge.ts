@@ -2,7 +2,7 @@
 import { useCallback, useEffect, type RefObject } from "react";
 import type { WebViewMessageEvent, WebViewRef } from "./WebView";
 import { settings, type Settings } from "@/lib/store";
-import { translate, type TrResult } from "@/lib/translator";
+import { translate, translateAI, type TrResult } from "@/lib/translator";
 import { toPage } from "./inject";
 
 // хуудсанд харагдах тохиргоо (pagetr.js-ийн chrome.storage.local-тай ижил нэрс)
@@ -47,6 +47,9 @@ export function useBridge(ref: RefObject<WebViewRef | null>, onEvent?: (e: PageE
     if (m?.kind === "req") {
       const msg = m.msg || {};
       let data: unknown = {};
+      if (msg.type === "translateAI") {
+        try { data = await translateAI(msg.texts || [], msg.context, msg.prefer); } catch { data = { error: "x", reason: "other" }; }
+      }
       if (msg.type === "translate") {
         data = await translateQuiet({ kind: msg.kind, texts: msg.texts || [], quality: msg.quality, context: msg.context, remember: msg.remember, fast: msg.fast, prefer: msg.prefer });
       }

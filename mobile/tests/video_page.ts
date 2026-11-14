@@ -23,7 +23,8 @@ window.ReactNativeWebView = { postMessage(s) {
   if (m.kind === "vai") (window.__vai = window.__vai || []).push(m);
   if (m.kind !== "req") { __events.push(m.kind); return; }
   setTimeout(() => {
-    const data = { results: m.msg.texts.map((t) => ({ mn: (m.msg.quality ? "AI:" : "MN:") + t })), tier: m.msg.quality ? "pro" : "google", ai: !!m.msg.quality };
+    const ai = !!m.msg.quality || m.msg.type === "translateAI";
+    const data = { results: m.msg.texts.map((t) => ({ mn: (ai ? "AI:" : "MN:") + t })), tier: ai ? "pro" : "google", ai };
     eval(${respTpl}.replace('"id":0', '"id":' + m.id).replace('"data":null', '"data":' + JSON.stringify(data)));
   }, 20);
 } };

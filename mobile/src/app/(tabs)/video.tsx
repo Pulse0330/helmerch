@@ -34,9 +34,19 @@ export default function Video() {
     if (e.kind === "vstatus") setStatus(String(e.text || ""));
     if (e.kind === "vai") {
       const done = Number(e.done) || 0, total = Number(e.total) || 1;
-      if (e.state === "progress") setAi(`✨ Gemini ${Math.min(99, Math.round((100 * done) / total))}%`);
+      const pct = Math.min(99, Math.round((100 * done) / total));
+      if (e.state === "progress") setAi(`✨ Gemini ${pct}%`);
       else if (e.state === "done") setAi("✨ Gemini ✓ дууссан");
-      else setAi(e.nokey ? "Gemini: түлхүүргүй (Тохиргоо)" : `Gemini: хязгаар дүүрсэн (${Math.round((100 * done) / total)}%)`);
+      else {
+        const why: Record<string, string> = {
+          nokey: "Gemini: түлхүүр оруулаагүй (Тохиргоо)",
+          badkey: "Gemini: түлхүүр буруу (Тохиргоо → Шалгах)",
+          limit: `Gemini: үнэгүй хязгаар дүүрсэн — 1 мин хүлээгээд үргэлжилнэ (${pct}%)`,
+          net: `Gemini: холбогдож чадсангүй — дахин оролдож байна (${pct}%)`,
+          other: `Gemini: түр алдаа — дахин оролдож байна (${pct}%)`,
+        };
+        setAi(why[String(e.reason)] || why.other);
+      }
     }
     if (e.kind === "vready") {
       setStatus(`✓ Хадмал бэлэн (${e.count} мөр)`);

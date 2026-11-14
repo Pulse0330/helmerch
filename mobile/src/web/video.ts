@@ -140,22 +140,30 @@ export const VIDEO_BEFORE_JS = `(function(){
       post({ kind: "vready", count: count });
     }
     // Gemini-ийн явцыг апп-д мэдэгдэнэ (видеоны дээд талд «✨ Gemini 45%» → «✨ Gemini ✓ дууссан»)
+    // Gemini (хурдан lite загвар): Google руу нуугдмал шилжихгүй — бүтэхгүй бол шалтгааныг апп-д хэлээд,
+    // хязгаар бол 1 мин, сүлжээ бол 10 сек хүлээгээд үргэлжилнэ; түлхүүргүй/буруу бол зогсоно.
+    function sendAI(texts){
+      return new Promise(function(res){
+        chrome.runtime.sendMessage({ type: "translateAI", texts: texts, prefer: "gemini",
+          context: "Video subtitles: " + document.title.slice(0, 100) }, function(r){ res(r || {}); });
+      });
+    }
     async function gemini(){
       await new Promise(function(z){ setTimeout(z, 600); });   // эхний Google мөрүүд түрүүлж гарна
       var n = function(){ return Object.keys(aiDone).length; };
       post({ kind: "vai", state: "progress", done: 0, total: count });
       for (;;) {
-        var q = nextChunk(aiDone, 25);
+        var q = nextChunk(aiDone, 20);
         if (!q.length) break;
-        var rq = await send(q, true);
-        if (!rq.results || rq.ai === false) {                   // түлхүүргүй эсвэл хязгаар дүүрсэн — Google хэвээр
-          if (rq.ai === false || ++fails > 3) {
-            post({ kind: "vai", state: "stopped", done: n(), total: count, nokey: n() === 0 && rq.ai === false });
-            return;
-          }
-          await new Promise(function(z){ setTimeout(z, 5000); });
+        var rq = await sendAI(q);
+        if (!rq.results) {
+          var why = rq.reason || "other";
+          post({ kind: "vai", state: "error", reason: why, done: n(), total: count });
+          if (why === "nokey" || why === "badkey" || ++fails > 8) return;
+          await new Promise(function(z){ setTimeout(z, why === "limit" ? 60000 : 10000); });
           continue;
         }
+        fails = 0;
         q.forEach(function(tx, j){ aiDone[tx] = 1; var mn = rq.results[j] && rq.results[j].mn; if (mn) V.mn[tx] = mn; });
         if (V.fill) V.fill();                                   // track-ийн мөрүүдийг ч сольно
         post({ kind: "vai", state: "progress", done: n(), total: count });

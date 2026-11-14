@@ -342,6 +342,30 @@ export async function translate(req: { kind?: string; texts: string[]; quality?:
   return { results: results.map((r) => r || { mn: "" }), tier, ai: tier === "pro" };
 }
 
+// Зөвхөн AI (видео хадмалыг ар талд сайжруулахад): хурдан загвар (Gemini flash-lite / GPT mini), Google руу шилжихгүй,
+// удаан дахин оролдохгүй — бүтэхгүй бол шалтгааныг нь буцаана (апп хэрэглэгчид харуулна).
+export type AiReason = "nokey" | "limit" | "badkey" | "net" | "other";
+export async function translateAI(texts: string[], context?: string, prefer?: string): Promise<TrResult & { reason?: AiReason }> {
+  const s = settings.get();
+  if (!hasAI()) return { error: "nokey", reason: "nokey" };
+  const src = texts.map(norm);
+  const key = (t: string) => JSON.stringify(["text", true, s.proTerms, t]);
+  const out = src.map((t) => trCache.get(key(t))?.mn || "");
+  const todo = out.map((m, i) => (m ? -1 : i)).filter((i) => i >= 0);
+  if (todo.length) {
+    try {
+      const mns = await quality(todo.map((i) => src[i]), context ? [norm(context).slice(0, 500)] : null, s.proTerms, true, prefer);
+      todo.forEach((i, j) => { out[i] = mns[j] || ""; if (out[i]) trCache.set(key(src[i]), { mn: out[i] }); });
+    } catch (e: any) {
+      const m = String(e?.message || e);
+      const reason: AiReason = /хязгаар|429/.test(m) ? "limit" : /401|403|буруу|эрхгүй|API key/i.test(m) ? "badkey"
+        : /сүлжээ|timeout|abort|network|fetch/i.test(m) ? "net" : "other";
+      return { error: m.slice(0, 160), reason };
+    }
+  }
+  return { results: out.map((mn) => ({ mn })), tier: "pro", ai: true };
+}
+
 // зурган дээрх текстийг уншиж орчуулна (Gemini)
 export async function ocrImage(base64: string, mime = "image/jpeg"): Promise<{ original: string; mongolian: string } | { error: string }> {
   if (!keys.get().gemini) return { error: "nokey" };
