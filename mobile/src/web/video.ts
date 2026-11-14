@@ -282,18 +282,18 @@ export const VIDEO_BEFORE_JS = `(function(){
     for (var i = 0; i < V.cues.length; i++) { if (V.cues[i].s <= t && t < V.cues[i].e + 0.3) cue = V.cues[i]; if (V.cues[i].s > t) break; }
     var mn = cue ? (V.mn[cue.t] || "") : "";
     if (!mn) { var dc = domCaption(v) || trackLine(v); mn = dc ? liveMn(dc) : ""; if (!dc) lastMn = ""; }
-    // бүтэн дэлгэц: монгол track-ийг харуулж, YouTube-ийн англи track-ийг нууна (апп дотор: эсрэгээрээ)
+    // Монгол хадмалыг видеоны track-аар харуулна — жижиг дэлгэц, бүтэн дэлгэц аль алинд iPhone өөрөө зурна
+    // (хуудсан дээрх давхарга iPhone-ий жижиг тоглуулагч дээр харагдахгүй байсан). YouTube-ийн англи track нуугдана.
     if (mnTrack) {
-      var trackMode = full && !V.preparing ? "showing" : "hidden";
+      var trackMode = V.preparing ? "hidden" : "showing";
       if (mnTrack.mode !== trackMode) mnTrack.mode = trackMode;
-      if (full) {
-        var tt = v.textTracks;
-        for (var k = 0; k < tt.length; k++) if (tt[k] !== mnTrack && tt[k].mode === "showing" && !V.both) tt[k].mode = "hidden";
-        // бүтэн хадмал байхгүй (мөр мөрөөр) үед одоогийн мөрийг track-д түр нэмнэ
-        if (!V.got && mn && typeof VTTCue !== "undefined" && (!liveCue || liveCue.text !== mn)) {
-          try { if (liveCue) mnTrack.removeCue(liveCue); liveCue = new VTTCue(t, t + 4, mn); liveCue.line = -3; mnTrack.addCue(liveCue); } catch (e) {}
-        }
+      var tt = v.textTracks;
+      for (var k = 0; k < tt.length; k++) if (tt[k] !== mnTrack && tt[k].mode === "showing" && !V.both) tt[k].mode = "hidden";
+      // бүтэн хадмал байхгүй (мөр мөрөөр) үед одоогийн мөрийг track-д түр нэмнэ
+      if (!V.got && mn && typeof VTTCue !== "undefined" && (!liveCue || liveCue.text !== mn)) {
+        try { if (liveCue) mnTrack.removeCue(liveCue); liveCue = new VTTCue(t, t + 4, mn); liveCue.line = -3; mnTrack.addCue(liveCue); } catch (e) {}
       }
+      if (!mn && liveCue && !V.got) { try { mnTrack.removeCue(liveCue); } catch (e) {} liveCue = null; }
     }
     // оношлогоо: хадмал бэлэн ч 5 сек тоглуулахад нэг ч мөр таарахгүй бол цагийг харуулна
     if (V.got && !V.preparing && !v.paused) blank = mn ? 0 : blank + 0.2;
@@ -318,7 +318,7 @@ export const VIDEO_BEFORE_JS = `(function(){
     var r = v.getBoundingClientRect();
     // видеоны доод хэсэгт; видео харагдахгүй байвал дэлгэцийн доод хэсэгт
     box.style.top = (r.height > 60 && r.bottom > 0 ? Math.min(innerHeight - 90, Math.max(0, r.bottom - 70)) : innerHeight * 0.62) + "px";
-    if (full) mn = "";                                    // бүтэн дэлгэцэнд track харуулна, давхарга хэрэггүй
+    if (full || mnTrack) mn = "";                         // track харуулж байгаа — давхарга зөвхөн track залгаж чадаагүй үед (нөөц)
     box.innerHTML = mn ? '<span style="background:rgba(0,0,0,.72);color:#fff;font:600 16px/1.4 -apple-system,system-ui,sans-serif;' +
       'padding:3px 8px;border-radius:6px;-webkit-box-decoration-break:clone;box-decoration-break:clone">' +
       mn.replace(/[&<>]/g, function(c){ return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }) + "</span>" : "";

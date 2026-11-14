@@ -33,7 +33,9 @@ setTimeout(() => {
   const mn = [...v.textTracks].find((t) => t.language === "mn");
   if (!mn) bad.push("монгол track залгагдсангүй");
   else if (!mn.cues || mn.cues.length !== 3 || mn.cues[1].text !== "MN:I am honored to be with you today.") bad.push("монгол track-ийн мөр буруу: " + (mn.cues ? mn.cues.length : "null"));
-  if (mn && mn.mode === "showing") bad.push("апп дотор (бүтэн дэлгэц биш) монгол track харагдаж байна — давхар гарна");
+  if (mn && mn.mode !== "showing") bad.push("монгол track харагдахгүй байна (" + mn.mode + ")");
+  if (en.mode === "showing") bad.push("англи track харагдсаар байна");
+  if ((document.querySelector("hm-sub") || {}).innerText) bad.push("давхарга ч гарч байна — давхар");
   document.body.setAttribute("data-result", bad.length ? "FAIL: " + bad.join("; ") : "PASS");
 }, 3000);
 </script></body></html>`;
