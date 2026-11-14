@@ -114,6 +114,21 @@ export default function SettingsScreen() {
           value={s.uiTr} onChange={(v) => settings.set({ uiTr: v })} />
       </Card>
 
+      <Text style={[styles.h2, { color: t.muted }]}>ЯМАР Ч АПП ДЭЭР (SHARE ЦЭС)</Text>
+      <Card style={{ gap: 6 }}>
+        {[
+          "Safari, Notes, Mail, Books, Messages — аль ч апп дээр текстээ удаан дарж сонгоно.",
+          "Гарч ирэх цэснээс «Share…» (Хуваалцах) дарна.",
+          "Доод мөрнөөс «Хэлмэрчээр орчуулах» дарна → орчуулга доороос гарна.",
+          "Анх удаа харагдахгүй бол: доод мөрийг хамгийн доош гүйлгээд «Edit Actions…» → «Хэлмэрчээр орчуулах»-ыг ⊕ дарж нэмнэ.",
+        ].map((s, i) => (
+          <View key={i} style={{ flexDirection: "row", gap: 8 }}>
+            <Text style={[styles.n, { backgroundColor: t.accent }]}>{i + 1}</Text>
+            <Text style={{ flex: 1, color: t.text, lineHeight: 20 }}>{s}</Text>
+          </View>
+        ))}
+      </Card>
+
       <Text style={[styles.h2, { color: t.muted }]}>SAFARI-Д ОРЧУУЛАХ</Text>
       <Card style={{ gap: 6 }}>
         {[
