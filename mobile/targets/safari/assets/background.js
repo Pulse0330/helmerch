@@ -202,7 +202,6 @@ Translate each item of this JSON array into Mongolian. Return ONLY a JSON array 
   var geminiModelsPro = ["gemini-flash-latest", "gemini-flash-lite-latest"];
   var geminiDiscovered = "";
   var geminiCool = {};
-  var geminiGap = spacer(4e3);
   var noThinkingCfg = false;
   async function discoverGemini(key) {
     if (geminiDiscovered === key) return;
@@ -226,16 +225,31 @@ Translate each item of this JSON array into Mongolian. Return ONLY a JSON array 
     } catch {
     }
   }
-  async function geminiRaw(parts, system, timeoutMs = 3e4, pro = false) {
-    const key = keys.get().gemini;
-    if (!key) throw new Error("Gemini түлхүүр байхгүй");
-    await discoverGemini(key);
+  var geminiKeyList = () => {
+    const k = keys.get();
+    return [k.gemini, k.gemini2, k.gemini3].filter((x) => !!x);
+  };
+  var geminiGaps = {};
+  var gapFor = (key) => geminiGaps[key] ||= spacer(4e3);
+  var geminiNext = 0;
+  async function geminiRaw(parts, system, timeoutMs = 3e4, pro = false, onlyKey) {
+    const list = onlyKey ? [onlyKey] : geminiKeyList();
+    if (!list.length) throw new Error("Gemini түлхүүр байхгүй");
+    await discoverGemini(list[0]);
     const ml = pro ? geminiModelsPro : geminiModels;
-    for (let attempt = 0; attempt < ml.length + 2; attempt++) {
-      const ready2 = ml.filter((m) => (geminiCool[m] || 0) < now());
-      if (!ready2.length) throw new Error("Gemini хязгаар дүүрсэн (түр хүлээнэ)");
-      await geminiGap();
-      const model = ready2[0];
+    for (let attempt = 0; attempt < (ml.length + 2) * list.length; attempt++) {
+      let key = "", model = "";
+      for (let j = 0; j < list.length && !model; j++) {
+        const k = list[(geminiNext + j) % list.length];
+        const m = ml.find((x) => (geminiCool[k + "|" + x] || 0) < now());
+        if (m) {
+          key = k;
+          model = m;
+          geminiNext = (geminiNext + j + 1) % list.length;
+        }
+      }
+      if (!model) throw new Error("Gemini хязгаар дүүрсэн (түр хүлээнэ)");
+      await gapFor(key)();
       const cfg = { responseMimeType: "application/json", temperature: 0.3 };
       if (!noThinkingCfg) {
         if (model.includes("2.5")) cfg.thinkingConfig = { thinkingBudget: 0 };
@@ -262,7 +276,13 @@ Translate each item of this JSON array into Mongolian. Return ONLY a JSON array 
         }
         if ([429, 500, 503].includes(st2)) {
           const daily = st2 === 429 && /per.?day|daily|PerDay/i.test(detail);
-          geminiCool[model] = now() + (st2 === 429 ? daily ? 3600 : 120 : 20) * 1e3;
+          geminiCool[key + "|" + model] = now() + (st2 === 429 ? daily ? 3600 : 120 : 20) * 1e3;
+          continue;
+        }
+        if ((st2 === 400 || st2 === 401 || st2 === 403) && list.length > 1 && /key|permission|denied/i.test(detail)) {
+          ml.forEach((x) => {
+            geminiCool[key + "|" + x] = now() + 3600 * 1e3;
+          });
           continue;
         }
         throw e;
@@ -323,12 +343,12 @@ Translate each item of this JSON array into Mongolian. Return ONLY a JSON array 
     }
     throw new Error("Copilot хариу өгсөнгүй");
   }
-  var hasAI = () => !!(keys.get().gemini || keys.get().github);
+  var hasAI = () => !!(geminiKeyList().length || keys.get().github);
   async function quality(lines, context, proTerms, lite = false, prefer) {
     const system = PRO_PROMPT + (proTerms ? PRO_TERMS_RULE : "");
     const chain = [];
     if (keys.get().github) chain.push(["Copilot", copilot]);
-    if (keys.get().gemini) chain.push(["Gemini", gemini]);
+    if (geminiKeyList().length) chain.push(["Gemini", gemini]);
     if (prefer === "gemini" && chain.length === 2 && chain[0][0] === "Copilot") chain.reverse();
     const errors = [];
     let best = null;
@@ -434,7 +454,7 @@ Translate each item of this JSON array into Mongolian. Return ONLY a JSON array 
     const tier = tiers.size === 1 && tiers.has("pro") ? "pro" : tiers.has("google") ? "google" : tiers.size ? "fast" : "pro";
     return { results: results.map((r) => r || { mn: "" }), tier, ai: tier === "pro" };
   }
-  async function testProvider(name) {
+  async function testProvider(name, geminiKey) {
     try {
       if (name === "Copilot") {
         if (!keys.get().github) return { ok: false, msg: "Токен оруулаагүй байна." };
@@ -442,9 +462,11 @@ Translate each item of this JSON array into Mongolian. Return ONLY a JSON array 
         const out2 = await copilot(["Project management is important."], null, PRO_PROMPT, true, false);
         return { ok: true, msg: "Ажиллаж байна ✓\n\n" + out2[0] };
       }
-      if (!keys.get().gemini) return { ok: false, msg: "Түлхүүр оруулаагүй байна." };
+      const key = geminiKey || geminiKeyList()[0];
+      if (!key) return { ok: false, msg: "Түлхүүр оруулаагүй байна." };
       geminiDiscovered = "";
-      const out = await gemini(["Project management is important."], null, PRO_PROMPT, false, true);
+      const lines = ["Project management is important."];
+      const out = jsonArray(await geminiRaw([{ text: prompt(lines, null, false) }], PRO_PROMPT, 3e4, false, key), 1);
       return { ok: true, msg: "Ажиллаж байна ✓\n\n" + out[0] };
     } catch (e) {
       const m = String(e?.message || e);

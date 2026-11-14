@@ -136,8 +136,7 @@ export async function googleWord(word: string): Promise<{ mn: string; alts: Alt[
 let geminiModels = ["gemini-flash-lite-latest", "gemini-flash-latest"];
 let geminiModelsPro = ["gemini-flash-latest", "gemini-flash-lite-latest"];
 let geminiDiscovered = "";
-const geminiCool: Record<string, number> = {};
-const geminiGap = spacer(4000);            // үнэгүй эрх: минутад ~15 хүсэлт
+const geminiCool: Record<string, number> = {};       // "түлхүүр|загвар" → энэ хүртэл алгасна (хязгаар дүүрсэн)
 let noThinkingCfg = false;
 
 async function discoverGemini(key: string) {
@@ -165,16 +164,30 @@ async function discoverGemini(key: string) {
   }
 }
 
-async function geminiRaw(parts: any[], system: string | null, timeoutMs = 30000, pro = false): Promise<string> {
-  const key = keys.get().gemini;
-  if (!key) throw new Error("Gemini түлхүүр байхгүй");
-  await discoverGemini(key);
+// хадгалсан Gemini түлхүүрүүд (1–3). Хязгаар/хурдыг түлхүүр бүрд тусад нь тооцно.
+const geminiKeyList = (): string[] => {
+  const k = keys.get() as Partial<Record<string, string>>;
+  return [k.gemini, k.gemini2, k.gemini3].filter((x): x is string => !!x);
+};
+const geminiGaps: Record<string, () => Promise<void>> = {};
+const gapFor = (key: string) => (geminiGaps[key] ||= spacer(4000));
+let geminiNext = 0;                                     // дараагийн хүсэлтийг дараагийн түлхүүрээр (ачааллыг хуваана)
+
+async function geminiRaw(parts: any[], system: string | null, timeoutMs = 30000, pro = false, onlyKey?: string): Promise<string> {
+  const list = onlyKey ? [onlyKey] : geminiKeyList();
+  if (!list.length) throw new Error("Gemini түлхүүр байхгүй");
+  await discoverGemini(list[0]);
   const ml = pro ? geminiModelsPro : geminiModels;     // шинэчлэгдсэн жагсаалтаас сонгоно
-  for (let attempt = 0; attempt < ml.length + 2; attempt++) {
-    const ready = ml.filter((m) => (geminiCool[m] || 0) < now());
-    if (!ready.length) throw new Error("Gemini хязгаар дүүрсэн (түр хүлээнэ)");
-    await geminiGap();
-    const model = ready[0];
+  for (let attempt = 0; attempt < (ml.length + 2) * list.length; attempt++) {
+    // хязгаар дүүрээгүй (түлхүүр, загвар) хослолыг дараагийн түлхүүрээс эхлэн хайна
+    let key = "", model = "";
+    for (let j = 0; j < list.length && !model; j++) {
+      const k = list[(geminiNext + j) % list.length];
+      const m = ml.find((x) => (geminiCool[k + "|" + x] || 0) < now());
+      if (m) { key = k; model = m; geminiNext = (geminiNext + j + 1) % list.length; }
+    }
+    if (!model) throw new Error("Gemini хязгаар дүүрсэн (түр хүлээнэ)");
+    await gapFor(key)();
     const cfg: any = { responseMimeType: "application/json", temperature: 0.3 };
     if (!noThinkingCfg) {
       if (model.includes("2.5")) cfg.thinkingConfig = { thinkingBudget: 0 };
@@ -192,7 +205,12 @@ async function geminiRaw(parts: any[], system: string | null, timeoutMs = 30000,
       if (st === 404 && ml.length > 1) { ml.splice(ml.indexOf(model), 1); continue; }
       if ([429, 500, 503].includes(st)) {
         const daily = st === 429 && /per.?day|daily|PerDay/i.test(detail);
-        geminiCool[model] = now() + (st === 429 ? (daily ? 3600 : 120) : 20) * 1000;
+        geminiCool[key + "|" + model] = now() + (st === 429 ? (daily ? 3600 : 120) : 20) * 1000;
+        continue;
+      }
+      // буруу түлхүүр: тэр түлхүүрийг 1 цаг алгасаад бусдыг оролдоно
+      if ((st === 400 || st === 401 || st === 403) && list.length > 1 && /key|permission|denied/i.test(detail)) {
+        ml.forEach((x) => { geminiCool[key + "|" + x] = now() + 3600 * 1000; });
         continue;
       }
       throw e;
@@ -243,13 +261,13 @@ async function copilot(lines: string[], context: string[] | null, system: string
 }
 
 // ---------------------------------------------------------------- сайн чанарын орчуулга: Copilot → Gemini
-export const hasAI = () => !!(keys.get().gemini || keys.get().github);
+export const hasAI = () => !!(geminiKeyList().length || keys.get().github);
 
 async function quality(lines: string[], context: string[] | null, proTerms: boolean, lite = false, prefer?: string): Promise<string[]> {
   const system = PRO_PROMPT + (proTerms ? PRO_TERMS_RULE : "");
   const chain: [string, typeof copilot][] = [];
   if (keys.get().github) chain.push(["Copilot", copilot]);
-  if (keys.get().gemini) chain.push(["Gemini", gemini]);
+  if (geminiKeyList().length) chain.push(["Gemini", gemini]);
   if (prefer === "gemini" && chain.length === 2 && chain[0][0] === "Copilot") chain.reverse();   // видео хадмал гэх мэт: Gemini эхэлж
   const errors: string[] = [];
   let best: [number, string[]] | null = null;
@@ -368,7 +386,7 @@ export async function translateAI(texts: string[], context?: string, prefer?: st
 
 // зурган дээрх текстийг уншиж орчуулна (Gemini)
 export async function ocrImage(base64: string, mime = "image/jpeg"): Promise<{ original: string; mongolian: string } | { error: string }> {
-  if (!keys.get().gemini) return { error: "nokey" };
+  if (!geminiKeyList().length) return { error: "nokey" };
   const p = "Read all the text in this image, in natural reading order, keeping paragraph breaks. " +
     "Then translate it into natural Mongolian (Cyrillic). Return ONLY JSON: " +
     '{"original": "<text as written>", "mongolian": "<Mongolian translation>"}. ' +
@@ -386,8 +404,8 @@ export async function ocrImage(base64: string, mime = "image/jpeg"): Promise<{ o
   return { error: "busy" };
 }
 
-// тохиргооны «Шалгах» товч
-export async function testProvider(name: "Copilot" | "Gemini"): Promise<{ ok: boolean; msg: string }> {
+// тохиргооны «Шалгах» товч (geminiKey: тухайн Gemini түлхүүрийг л шалгана)
+export async function testProvider(name: "Copilot" | "Gemini", geminiKey?: string): Promise<{ ok: boolean; msg: string }> {
   try {
     if (name === "Copilot") {
       if (!keys.get().github) return { ok: false, msg: "Токен оруулаагүй байна." };
@@ -395,9 +413,11 @@ export async function testProvider(name: "Copilot" | "Gemini"): Promise<{ ok: bo
       const out = await copilot(["Project management is important."], null, PRO_PROMPT, true, false);
       return { ok: true, msg: "Ажиллаж байна ✓\n\n" + out[0] };
     }
-    if (!keys.get().gemini) return { ok: false, msg: "Түлхүүр оруулаагүй байна." };
+    const key = geminiKey || geminiKeyList()[0];
+    if (!key) return { ok: false, msg: "Түлхүүр оруулаагүй байна." };
     geminiDiscovered = "";
-    const out = await gemini(["Project management is important."], null, PRO_PROMPT, false, true);
+    const lines = ["Project management is important."];
+    const out = jsonArray(await geminiRaw([{ text: prompt(lines, null, false) }], PRO_PROMPT, 30000, false, key), 1);
     return { ok: true, msg: "Ажиллаж байна ✓\n\n" + out[0] };
   } catch (e: any) {
     const m = String(e?.message || e);

@@ -69,6 +69,9 @@ if (-not (Test-Path "$mob\node_modules")) { Write-Host "      (mobile\node_modul
   # Safari өргөтгөлийн background (= аппын translator.ts) — жинхэнэ Google орчуулгаар (интернэт хэрэгтэй)
   node tests\safari_background.mjs 2>&1 | Out-Null
   if ($LASTEXITCODE -eq 0) { Ok "Safari өргөтгөл + орчуулгын гинж (Google)" } else { Bad "Safari өргөтгөл — 'cd mobile; node tests\safari_background.mjs'" }
+  # Олон Gemini түлхүүр: хуваах, хязгаар дүүрвэл дараагийнх руу шилжих
+  node tests\gemini_keys.mjs 2>&1 | Out-Null
+  if ($LASTEXITCODE -eq 0) { Ok "Gemini олон түлхүүр (солих)" } else { Bad "Gemini олон түлхүүр — 'cd mobile; node tests\gemini_keys.mjs'" }
   Pop-Location
 }
 

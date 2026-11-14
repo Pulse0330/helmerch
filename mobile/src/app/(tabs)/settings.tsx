@@ -9,17 +9,22 @@ import { deleteCred, useSavedHosts } from "@/lib/passwords";
 import { Btn, Card } from "@/components/ui";
 import { EXTENSION_VERSION } from "@/web/extension.generated";
 
+const GEMINI_STEPS = [
+  "Доорх товчоор Google AI Studio-г нээж, Google (Gmail) бүртгэлээрээ нэвтэрнэ.",
+  "Анх удаа бол нөхцөлийг зөвшөөрөөд (☑) Continue дарна.",
+  "Create API key товчийг дарна. Төсөл сонгох цонх гарвал Create key.",
+  "Гарч ирсэн AIza… гэж эхэлсэн түлхүүрийг Copy дарж хуулна.",
+  "Энд буцаж ирээд доорх нүдэнд буулгаж Хадгалах, дараа нь Шалгах дарна.",
+];
+const EXTRA_GEMINI_STEPS = [
+  "Үнэгүй хязгаар Google-ийн бүртгэл (төсөл) бүрд тусдаа — тиймээс ӨӨР Gmail бүртгэлээр нэвтэрч авна.",
+  "Safari-д эхлээд өмнөх бүртгэлээсээ гараад (Sign out) эсвэл өөр бүртгэл нэмээд Google AI Studio-г нээнэ.",
+  ...GEMINI_STEPS.slice(2),
+];
 const GUIDES: Record<KeyName, { title: string; url: string; open: string; steps: string[] }> = {
-  gemini: {
-    title: "Gemini түлхүүр (үнэгүй)", url: "https://aistudio.google.com/apikey", open: "Google AI Studio-г нээх",
-    steps: [
-      "Доорх товчоор Google AI Studio-г нээж, Google (Gmail) бүртгэлээрээ нэвтэрнэ.",
-      "Анх удаа бол нөхцөлийг зөвшөөрөөд (☑) Continue дарна.",
-      "Create API key товчийг дарна. Төсөл сонгох цонх гарвал Create key.",
-      "Гарч ирсэн AIza… гэж эхэлсэн түлхүүрийг Copy дарж хуулна.",
-      "Энд буцаж ирээд доорх нүдэнд буулгаж Хадгалах, дараа нь Шалгах дарна.",
-    ],
-  },
+  gemini: { title: "Gemini түлхүүр (үнэгүй)", url: "https://aistudio.google.com/apikey", open: "Google AI Studio-г нээх", steps: GEMINI_STEPS },
+  gemini2: { title: "Gemini түлхүүр 2 (заавал биш)", url: "https://aistudio.google.com/apikey", open: "Google AI Studio-г нээх", steps: EXTRA_GEMINI_STEPS },
+  gemini3: { title: "Gemini түлхүүр 3 (заавал биш)", url: "https://aistudio.google.com/apikey", open: "Google AI Studio-г нээх", steps: EXTRA_GEMINI_STEPS },
   github: {
     title: "Copilot (GitHub) токен", url: "https://github.com/settings/personal-access-tokens/new", open: "GitHub-ийг нээх",
     steps: [
@@ -36,13 +41,13 @@ function KeyBox({ name, t }: { name: KeyName; t: Theme }) {
   const k = useKeys();
   const g = GUIDES[name];
   const [val, setVal] = useState("");
-  const [open, setOpen] = useState(!k[name]);
+  const [open, setOpen] = useState(!k[name] && name !== "gemini2" && name !== "gemini3");
   const [busy, setBusy] = useState(false);
   const set = !!k[name];
 
   const test = async () => {
     setBusy(true);
-    const r = await testProvider(name === "github" ? "Copilot" : "Gemini");
+    const r = await testProvider(name === "github" ? "Copilot" : "Gemini", name === "github" ? undefined : k[name]);
     setBusy(false);
     Alert.alert(r.ok ? "Ажиллаж байна ✓" : "Ажиллахгүй байна", r.msg);
   };
@@ -104,6 +109,11 @@ export default function SettingsScreen() {
         Заавал биш, гэхдээ орчуулга маш их сайжирна. Түлхүүрүүд зөвхөн таны утасны нууц санд (Keychain) хадгалагдана.
       </Text>
       <KeyBox name="gemini" t={t} />
+      <Text style={{ color: t.muted, fontSize: 12.5, marginTop: -2 }}>
+        Нэмэлт Gemini түлхүүр (2, 3): нэгнийх нь өдрийн үнэгүй хязгаар дүүрвэл дараагийнх руу өөрөө шилжиж, хүсэлтүүдийг хооронд нь хуваана (хурдан). Өөр Gmail бүртгэлээс авна.
+      </Text>
+      <KeyBox name="gemini2" t={t} />
+      <KeyBox name="gemini3" t={t} />
       <KeyBox name="github" t={t} />
 
       <Text style={[styles.h2, { color: t.muted }]}>ОРЧУУЛГА</Text>

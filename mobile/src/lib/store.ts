@@ -73,16 +73,18 @@ settings.subscribe(() => settingsFile.save(settings.get));
 export const useSettings = () => useSyncExternalStore(settings.subscribe, settings.get);
 
 // ---------------------------------------------------------------- AI түлхүүрүүд (Keychain / Keystore)
-export type KeyName = "gemini" | "github";
-const KEY_ID: Record<KeyName, string> = { gemini: "helmerch_gemini_key", github: "helmerch_github_token" };
-export const keys = createStore<Record<KeyName, string>>({ gemini: "", github: "" });
+// Gemini түлхүүр 3 хүртэл: нэгнийх нь үнэгүй хязгаар дүүрвэл дараагийнх руу шилжинэ (хүсэлтүүдийг хооронд нь хуваана)
+export type KeyName = "gemini" | "gemini2" | "gemini3" | "github";
+export const GEMINI_SLOTS: KeyName[] = ["gemini", "gemini2", "gemini3"];
+const KEY_ID: Record<KeyName, string> = {
+  gemini: "helmerch_gemini_key", gemini2: "helmerch_gemini_key2", gemini3: "helmerch_gemini_key3", github: "helmerch_github_token",
+};
+export const keys = createStore<Record<KeyName, string>>({ gemini: "", gemini2: "", gemini3: "", github: "" });
 export const useKeys = () => useSyncExternalStore(keys.subscribe, keys.get);
 export async function loadKeys() {
-  const [gemini, github] = await Promise.all([
-    SecureStore.getItemAsync(KEY_ID.gemini).catch(() => null),
-    SecureStore.getItemAsync(KEY_ID.github).catch(() => null),
-  ]);
-  keys.set({ gemini: gemini || "", github: github || "" });
+  const names = Object.keys(KEY_ID) as KeyName[];
+  const vals = await Promise.all(names.map((n) => SecureStore.getItemAsync(KEY_ID[n]).catch(() => null)));
+  keys.set(Object.fromEntries(names.map((n, i) => [n, vals[i] || ""])) as Record<KeyName, string>);
 }
 export async function saveKey(name: KeyName, value: string) {
   const v = value.trim();
