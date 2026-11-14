@@ -138,6 +138,17 @@ export const VIDEO_BEFORE_JS = `(function(){
     if ((loaded && V.got) || ++tries > 60) { clearInterval(tick); return; }
     if (loadTrack()) loaded = true;
   }, 1000);
+  // YouTube-ийн CC-г хэрэглэгч унтраасан ч «МН хадмал» асаалттай бол хадмалын өгөгдлийг ар талд дахин асаана
+  // (англи хадмал CSS-ээр нуугдмал тул дэлгэцэнд гарахгүй) — бүтэн хадмал баригдаагүй үед дэлгэцээс уншихад хэрэгтэй.
+  setInterval(function(){
+    if (!V.on || V.got) return;
+    var p = document.getElementById("movie_player");
+    if (!p || !p.getOption) return;
+    try {
+      var cur = p.getOption("captions", "track");
+      if (!cur || !cur.languageCode) loadTrack();
+    } catch (e) { loadTrack(); }
+  }, 1500);
   // апп-ын «МН хадмал» товч
   window.__hmSubs = function(on){
     V.on = !!on;
