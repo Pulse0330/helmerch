@@ -12,7 +12,9 @@ export function youtubeId(url: string): string | null {
 export const VIDEO_BEFORE_JS = `(function(){
   if (window.__hmVideo) return; window.__hmVideo = true;
   var post = function(o){ try { window.ReactNativeWebView.postMessage(JSON.stringify(o)); } catch (e) {} };
-  var V = window.__hmV = { cues: [], mn: {}, got: false, lang: "", both: false };
+  // on: «МН хадмал» товч (анхдагчаар асаалттай). YouTube-ийн CC-г хэрэглэгч асаагаагүй ч өгөгдлийг нь ар талд ачаалж,
+  // англи хадмалыг дэлгэцэнд ХАРУУЛАХГҮЙ — зөвхөн монгол хадмал гарна.
+  var V = window.__hmV = { cues: [], mn: {}, got: false, lang: "", both: false, on: true };
 
   // --- хадмалын файлыг задлах (json3 эсвэл xml)
   function parse(text){
@@ -101,21 +103,35 @@ export const VIDEO_BEFORE_JS = `(function(){
     }
   }
 
-  // --- YouTube-ийн хадмалыг өөрөө асаах (англи эсвэл байгаа хадмал)
-  var tries = 0;
-  var tick = setInterval(function(){
-    if (V.got || ++tries > 40) { clearInterval(tick); return; }
+  // --- YouTube-ийн хадмалын өгөгдлийг ачаалах (англи эсвэл байгаа хадмал). Дэлгэцэнд нь CSS-ээр нуугдана.
+  function loadTrack(){
     var p = document.getElementById("movie_player");
-    if (!p || !p.getOption) return;
+    if (!p || !p.getOption) return false;
     try {
       p.loadModule && p.loadModule("captions");
       var list = p.getOption("captions", "tracklist") || [];
       // гараар хийсэн англи хадмал → автомат (asr) англи → байгаа хадмал
       var tr = list.filter(function(t){ return /^en/.test(t.languageCode) && t.kind !== "asr"; })[0] ||
                list.filter(function(t){ return /^en/.test(t.languageCode); })[0] || list[0];
-      if (tr) p.setOption("captions", "track", tr);       // бүтэн объектыг өгнө (зөвхөн languageCode биш)
+      if (tr) { p.setOption("captions", "track", tr); return true; }   // бүтэн объектыг өгнө (зөвхөн languageCode биш)
     } catch (e) {}
+    return false;
+  }
+  var tries = 0, loaded = false;
+  var tick = setInterval(function(){
+    if (!V.on) return;
+    if ((loaded && V.got) || ++tries > 60) { clearInterval(tick); return; }
+    if (loadTrack()) loaded = true;
   }, 1000);
+  // апп-ын «МН хадмал» товч
+  window.__hmSubs = function(on){
+    V.on = !!on;
+    document.documentElement.classList.toggle("hm-sub-on", V.on);
+    var p = document.getElementById("movie_player");
+    if (V.on) loadTrack();
+    else { try { p && p.setOption && p.setOption("captions", "track", {}); } catch (e) {} }   // YouTube-ийн хадмалыг ч унтраана
+    if (box && !V.on) box.innerHTML = "";
+  };
 
   // --- дэлгэц дээр гарч буй хадмал (YouTube-ийн CC асаалттай үед) — хүсэлт баригдаагүй ч эндээс уншина
   var CAP = ".ytp-caption-segment, .caption-visual-line, .captions-text, .ytp-caption-window-container, .caption-window, [class*='caption-window']";
@@ -143,20 +159,21 @@ export const VIDEO_BEFORE_JS = `(function(){
     return "";
   }
 
-  // --- монгол хадмалыг видеон дээр харуулах. Англи хадмалыг зөвхөн монгол нь бэлэн үед нууна («хамт» сонгоогүй бол).
+  // --- монгол хадмалыг видеон дээр харуулах. «МН хадмал» асаалттай үед YouTube-ийн англи хадмал ҮРГЭЛЖ нуугдана
+  // («Англи хадмал хамт» сонгосон үед л харагдана). Нуусан ч текст нь DOM-д байгаа тул уншиж орчуулна.
+  var HIDE = ".caption-window, .ytp-caption-window-container, .captions-text, .ytp-caption-segment, .caption-visual-line, [class*='caption-window'], [class*='captions-text']";
   var css = document.createElement("style");
-  css.textContent = "html.hm-hide:not(.hm-both) .caption-window, html.hm-hide:not(.hm-both) .ytp-caption-window-container," +
-    "html.hm-hide:not(.hm-both) .captions-text, html.hm-hide:not(.hm-both) .ytp-caption-segment{opacity:0!important}";
+  css.textContent = HIDE.split(", ").map(function(s){ return "html.hm-sub-on:not(.hm-both) " + s; }).join(", ") + "{opacity:0!important}";
+  document.documentElement.classList.add("hm-sub-on");
   var box = null, played = 0, hinted = false;
   function draw(){
     var v = document.querySelector("video");
     if (!css.isConnected && document.head) document.head.appendChild(css);
-    if (!v) return;
+    if (!v || !V.on) { if (box) box.innerHTML = ""; return; }
     var t = v.currentTime, cue = null;
     for (var i = 0; i < V.cues.length; i++) { if (V.cues[i].s <= t && t < V.cues[i].e + 0.3) cue = V.cues[i]; if (V.cues[i].s > t) break; }
     var mn = cue ? (V.mn[cue.t] || "") : "";
     if (!mn) { var dc = domCaption(v); if (dc) mn = liveMn(dc); }
-    document.documentElement.classList.toggle("hm-hide", !!mn);
     // 10 сек тоглуулаад ч хадмал олдохгүй бол CC асаахыг сануулна
     if (!v.paused) played += 0.2;
     if (!hinted && played > 10 && !V.got && !liveTold) { hinted = true; post({ kind: "vnone" }); }
@@ -176,3 +193,5 @@ export const VIDEO_BEFORE_JS = `(function(){
 
 // апп-аас: эх хадмалыг хамт харуулах эсэх
 export const videoBothJs = (on: boolean) => `document.documentElement.classList.toggle("hm-both", ${on});true;`;
+// апп-аас: «МН хадмал» асаах / унтраах
+export const videoSubsJs = (on: boolean) => `window.__hmSubs && window.__hmSubs(${on});true;`;

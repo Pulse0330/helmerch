@@ -56,8 +56,14 @@ setTimeout(() => {
     setTimeout(() => {
       const shown = document.querySelector("hm-sub").innerText;
       if (!/MN:Stay hungry, stay foolish\\./.test(shown)) bad.push("дэлгэцийн хадмалыг орчуулсангүй: " + JSON.stringify(shown));
-      if (!document.documentElement.classList.contains("hm-hide")) bad.push("англи хадмалыг нуусангүй");
-      document.body.setAttribute("data-result", bad.length ? "FAIL: " + bad.join("; ") : "PASS");
+      if (getComputedStyle(document.getElementById("cc")).opacity !== "0") bad.push("англи (YouTube) хадмал харагдсаар байна");
+      // «МН хадмал» унтраахад монгол хадмал алга болж, англи нь ч нуугдахаа болино
+      window.__hmSubs(false);
+      setTimeout(() => {
+        if (document.querySelector("hm-sub").innerText.trim()) bad.push("унтраасан ч монгол хадмал гарсаар байна");
+        if (getComputedStyle(document.getElementById("cc")).opacity === "0") bad.push("унтраасны дараа англи хадмал нуугдсаар");
+        document.body.setAttribute("data-result", bad.length ? "FAIL: " + bad.join("; ") : "PASS");
+      }, 500);
     }, 800);
   }, 200);
   x.send();

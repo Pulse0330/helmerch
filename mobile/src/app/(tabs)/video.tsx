@@ -9,7 +9,7 @@ import { Btn, Chip } from "@/components/ui";
 import { WebView, type WebViewRef } from "@/web/WebView";
 import { bridgeJs, PAGE_JS } from "@/web/inject";
 import { pageStore, useBridge, type PageEvent } from "@/web/bridge";
-import { VIDEO_BEFORE_JS, videoBothJs, youtubeId } from "@/web/video";
+import { VIDEO_BEFORE_JS, videoBothJs, videoSubsJs, youtubeId } from "@/web/video";
 
 function toVideoUrl(link: string): string | null {
   const s = link.trim();
@@ -26,13 +26,14 @@ export default function Video() {
   const [url, setUrl] = useState<string | null>(null);
   const [status, setStatus] = useState("");
   const [both, setBoth] = useState(false);
+  const [subsOn, setSubsOn] = useState(true);
   const [note, setNote] = useState("");
 
   const onEvent = useCallback((e: PageEvent) => {
     if (e.kind === "vstatus") setStatus(String(e.text || ""));
     if (e.kind === "vnone") {
-      // хадмал олдсонгүй: видеоны CC асаавал дэлгэц дээрх хадмалыг уншиж орчуулна
-      setStatus("Видеоны CC (хадмал) товчийг дарж асаана уу — асаамагц монгол хадмал гарна.");
+      // YouTube-д ч хадмал байхгүй видео (хадмалгүйгээр орчуулах арга алга)
+      setStatus("Энэ видеонд хадмал олдсонгүй. Хадмалтай (CC) видео сонгоно уу.");
     }
   }, []);
   const onMessage = useBridge(web, onEvent, false);
@@ -76,8 +77,10 @@ export default function Video() {
   return (
     <View style={{ flex: 1, backgroundColor: "#000" }}>
       <View style={[styles.bar, { backgroundColor: t.card, borderBottomColor: t.line }]}>
-        <Chip label="← Өөр видео" on={false} onPress={() => { setUrl(null); setStatus(""); }} />
-        <Chip label="Англи хадмал хамт" on={both} onPress={() => { setBoth(!both); web.current?.injectJavaScript(videoBothJs(!both)); }} />
+        <Chip label="← Өөр видео" on={false} onPress={() => { setUrl(null); setStatus(""); setSubsOn(true); setBoth(false); }} />
+        <Chip label={subsOn ? "МН хадмал: асаалттай" : "МН хадмал асаах"} on={subsOn}
+          onPress={() => { setSubsOn(!subsOn); web.current?.injectJavaScript(videoSubsJs(!subsOn)); }} />
+        {subsOn ? <Chip label="Англи хамт" on={both} onPress={() => { setBoth(!both); web.current?.injectJavaScript(videoBothJs(!both)); }} /> : null}
       </View>
       {status ? <Text style={[styles.status, { backgroundColor: t.accentSoft, color: t.text }]}>{status}</Text> : null}
       <WebView
