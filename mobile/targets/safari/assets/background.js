@@ -359,7 +359,7 @@ Translate each item of this JSON array into Mongolian. Return ONLY a JSON array 
   async function translate(req) {
     const kind = req.kind || "text";
     const s = settings.get();
-    const wantQ = !!req.quality && s.quality && hasAI();
+    const wantQ = !req.fast && !!req.quality && s.quality && hasAI();
     const texts = (req.texts || []).map(norm).slice(0, 300);
     const results = texts.map(() => null);
     const key = (t) => JSON.stringify([kind, wantQ, s.proTerms, t]);
@@ -398,7 +398,7 @@ Translate each item of this JSON array into Mongolian. Return ONLY a JSON array 
           } catch {
           }
         }
-        if (!mns && hasAI() && s.quality) {
+        if (!mns && !req.fast && hasAI() && s.quality) {
           try {
             mns = await quality(src, ctx, s.proTerms, true);
             tier2 = wantQ ? "pro" : "fast";

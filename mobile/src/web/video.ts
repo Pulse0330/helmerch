@@ -78,9 +78,10 @@ export const VIDEO_BEFORE_JS = `(function(){
   };
 
   // --- бүх хадмалыг орчуулах: тоглож буй хэсгээс эхэлж, эхлээд хурдан, дараа нь AI
+  // quality=false → fast: шууд Google (~0.3 сек). AI (quality) нь зөвхөн урьдчилан татсан хадмалыг ар талд сайжруулна.
   function send(texts, quality){
     return new Promise(function(res){
-      chrome.runtime.sendMessage({ type: "translate", kind: "text", texts: texts, quality: quality,
+      chrome.runtime.sendMessage({ type: "translate", kind: "text", texts: texts, quality: quality, fast: !quality,
         context: "Video subtitles: " + document.title.slice(0, 100) }, function(r){ res(r || {}); });
     });
   }
@@ -148,15 +149,27 @@ export const VIDEO_BEFORE_JS = `(function(){
     }
     return "";
   }
-  var live = {}, livePending = {}, liveTold = false;
+  // Дэлгэцийн хадмалыг шууд орчуулах: нэг удаад НЭГ хүсэлт. Автомат хадмал үгээ нэг нэгээр нэмдэг тул хагас өгүүлбэр бүрийг
+  // тусад нь хүсвэл дараалал үүсч хоцорно — хариу ирэхэд текст өөрчлөгдсөн бол хамгийн сүүлийнхийг л хүснэ.
+  var live = {}, inflight = false, want = "", lastMn = "", liveTold = false;
+  function ask(){
+    if (inflight || !want || live[want]) return;
+    var text = want;
+    inflight = true;
+    send([text], false).then(function(r){
+      inflight = false;
+      var mn = r.results && r.results[0] && r.results[0].mn;
+      if (mn) live[text] = mn;
+      ask();                                              // энэ хооронд шинэ мөр гарсан бол
+    });
+  }
   function liveMn(text){
-    if (live[text]) return live[text];
-    if (!livePending[text]) {
-      livePending[text] = 1;
-      send([text], false).then(function(r){ var mn = r.results && r.results[0] && r.results[0].mn; if (mn) live[text] = mn; else delete livePending[text]; });
-      if (!liveTold) { liveTold = true; post({ kind: "vstatus", text: "Дэлгэц дээрх хадмалыг орчуулж байна" }); setTimeout(function(){ post({ kind: "vstatus", text: "" }); }, 3000); }
-    }
-    return "";
+    want = text;
+    if (live[text]) { lastMn = live[text]; return lastMn; }
+    // хадмал хэсэгчлэн өссөн бол (өмнөх мөрийн үргэлжлэл) орчуулга ирэх хүртэл өмнөхийг харуулна
+    ask();
+    if (!liveTold) { liveTold = true; post({ kind: "vstatus", text: "Дэлгэц дээрх хадмалыг орчуулж байна" }); setTimeout(function(){ post({ kind: "vstatus", text: "" }); }, 3000); }
+    return lastMn;
   }
 
   // --- монгол хадмалыг видеон дээр харуулах. «МН хадмал» асаалттай үед YouTube-ийн англи хадмал ҮРГЭЛЖ нуугдана
@@ -173,7 +186,7 @@ export const VIDEO_BEFORE_JS = `(function(){
     var t = v.currentTime, cue = null;
     for (var i = 0; i < V.cues.length; i++) { if (V.cues[i].s <= t && t < V.cues[i].e + 0.3) cue = V.cues[i]; if (V.cues[i].s > t) break; }
     var mn = cue ? (V.mn[cue.t] || "") : "";
-    if (!mn) { var dc = domCaption(v); if (dc) mn = liveMn(dc); }
+    if (!mn) { var dc = domCaption(v); mn = dc ? liveMn(dc) : ""; if (!dc) lastMn = ""; }
     // 10 сек тоглуулаад ч хадмал олдохгүй бол CC асаахыг сануулна
     if (!v.paused) played += 0.2;
     if (!hinted && played > 10 && !V.got && !liveTold) { hinted = true; post({ kind: "vnone" }); }

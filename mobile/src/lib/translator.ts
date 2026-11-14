@@ -278,10 +278,11 @@ async function quality(lines: string[], context: string[] | null, proTerms: bool
 export type TrResult = { results?: { mn: string; alts?: Alt[] }[]; tier?: "pro" | "fast" | "google"; ai?: boolean; error?: string };
 const norm = (t: string) => String(t).replace(/\s+/g, " ").trim().slice(0, 5000);
 
-export async function translate(req: { kind?: string; texts: string[]; quality?: boolean; context?: string; remember?: boolean }): Promise<TrResult> {
+// fast: AI-г алгасаж шууд Google (видео хадмал гэх мэт хоцрох ёсгүй үед — Gemini үнэгүй эрх хүсэлт бүрийн хооронд 4 сек хүлээлгэдэг)
+export async function translate(req: { kind?: string; texts: string[]; quality?: boolean; context?: string; remember?: boolean; fast?: boolean }): Promise<TrResult> {
   const kind = req.kind || "text";
   const s = settings.get();
-  const wantQ = !!req.quality && s.quality && hasAI();
+  const wantQ = !req.fast && !!req.quality && s.quality && hasAI();
   const texts = (req.texts || []).map(norm).slice(0, 300);
   const results: ({ mn: string; alts?: Alt[] } | null)[] = texts.map(() => null);
   const key = (t: string) => JSON.stringify([kind, wantQ, s.proTerms, t]);
@@ -313,7 +314,7 @@ export async function translate(req: { kind?: string; texts: string[]; quality?:
       if (wantQ) {
         try { mns = await quality(src, ctx, s.proTerms); tier = "pro"; cacheable = true; } catch { /* хурдан шат руу */ }
       }
-      if (!mns && hasAI() && s.quality) {
+      if (!mns && !req.fast && hasAI() && s.quality) {
         try { mns = await quality(src, ctx, s.proTerms, true); tier = wantQ ? "pro" : "fast"; cacheable = true; } catch { /* Google руу */ }
       }
       if (!mns) {
