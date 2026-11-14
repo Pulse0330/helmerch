@@ -1,0 +1,74 @@
+# Хэлмэрчийн iPhone апп (.ipa) — GitHub-ийн үнэгүй Mac сервер дээр ГАРЫН ҮСЭГГҮЙ бүтээнэ.
+# Гарын үсгийг утсан дээр AltStore / SideStore таны үнэгүй Apple ID-аар зурна (7 хоног тутам сунгана).
+#
+# Ажиллуулах: `mobile-v1.0.0` гэх мэт tag push хийхэд → release (prerelease) үүсгэж .ipa-г хавсаргана.
+#   (prerelease тул компьютерын програмын «Шинэчлэх» шалгалтад (releases/latest) нөлөөлөхгүй.)
+# Эсвэл GitHub → Actions → энэ workflow → Run workflow (зөвхөн artifact болгон хадгална).
+name: iPhone (.ipa, гарын үсэггүй)
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["mobile-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 75
+    defaults:
+      run:
+        shell: bash
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Хамаарлууд
+        run: npm ci
+
+      - name: iOS төсөл үүсгэх (expo prebuild + CocoaPods)
+        env:
+          CI: "1"
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Бүтээх (гарын үсэггүй)
+        run: |
+          WS=$(ls -d ios/*.xcworkspace | head -1)
+          SCHEME=$(basename "$WS" .xcworkspace)
+          echo "workspace=$WS scheme=$SCHEME"
+          xcodebuild -workspace "$WS" -scheme "$SCHEME" -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Helmerch.xcarchive" archive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            | tail -n 60
+          APP=$(ls -d "$RUNNER_TEMP"/Helmerch.xcarchive/Products/Applications/*.app | head -1)
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$APP" "$RUNNER_TEMP/ipa/Payload/"
+          (cd "$RUNNER_TEMP/ipa" && zip -qry "$GITHUB_WORKSPACE/Helmerch-iPhone.ipa" Payload)
+          ls -la "$GITHUB_WORKSPACE/Helmerch-iPhone.ipa"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Helmerch-iPhone
+          path: Helmerch-iPhone.ipa
+
+      - name: Release (tag-аар ажилласан үед)
+        if: startsWith(github.ref, 'refs/tags/mobile-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "$GITHUB_WORKSPACE/Helmerch-iPhone.ipa" \
+            --title "Хэлмэрч iPhone ${GITHUB_REF_NAME#mobile-v}" --prerelease \
+            --notes "iPhone-д AltStore / SideStore-оор суулгана (үнэгүй Apple ID, 7 хоног тутам сунгана). Гарын үсэггүй .ipa."

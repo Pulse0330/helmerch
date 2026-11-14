@@ -1,0 +1,60 @@
+// WebView-ээс ирсэн мессежийг боловсруулна: орчуулгын хүсэлт → translator, тохиргоо → store.
+import { useCallback, useEffect, type RefObject } from "react";
+import type { WebViewMessageEvent, WebViewRef } from "./WebView";
+import { settings, type Settings } from "@/lib/store";
+import { translate, type TrResult } from "@/lib/translator";
+import { toPage } from "./inject";
+
+// хуудсанд харагдах тохиргоо (pagetr.js-ийн chrome.storage.local-тай ижил нэрс)
+export function pageStore(s: Settings) {
+  return { pageMode: s.pageMode, trStyle: s.trStyle, uiTr: s.uiTr, examMode: s.examMode,
+           wordTap: s.wordTap, subs: s.subs, settings: { quality: s.quality } };
+}
+const PAGE_KEYS = ["pageMode", "trStyle", "uiTr", "examMode", "wordTap", "subs"] as const;
+
+// алдааг хэрэглэгчид харуулахгүй: хэд хэдэн удаа чимээгүй дахин оролдоно
+export async function translateQuiet(msg: Parameters<typeof translate>[0], tries = 3): Promise<TrResult> {
+  let r: TrResult = { error: "x" };
+  for (let i = 0; i < tries; i++) {
+    try { r = await translate(msg); } catch { r = { error: "x" }; }
+    if (!r.error) return r;
+    await new Promise((res) => setTimeout(res, [800, 2000, 4000][i] || 4000));
+  }
+  return r;
+}
+
+export type PageEvent = { kind: "sel"; text: string } | { kind: "word"; word: string } | { kind: string; [k: string]: unknown };
+
+export function useBridge(ref: RefObject<WebViewRef | null>, onEvent?: (e: PageEvent) => void) {
+  // тохиргоо өөрчлөгдөхөд нээлттэй хуудсанд шууд мэдэгдэнэ (дахин ачаалахгүй)
+  useEffect(() => {
+    let prev = pageStore(settings.get());
+    return settings.subscribe(() => {
+      const next = pageStore(settings.get()), diff: Record<string, unknown> = {};
+      for (const k of Object.keys(next) as (keyof typeof next)[]) {
+        if (JSON.stringify(next[k]) !== JSON.stringify(prev[k])) diff[k] = next[k];
+      }
+      prev = next;
+      if (Object.keys(diff).length) ref.current?.injectJavaScript(toPage({ kind: "store", data: diff }));
+    });
+  }, [ref]);
+
+  return useCallback(async (e: WebViewMessageEvent) => {
+    let m: any;
+    try { m = JSON.parse(e.nativeEvent.data); } catch { return; }
+    if (m?.kind === "req") {
+      const msg = m.msg || {};
+      let data: unknown = {};
+      if (msg.type === "translate") {
+        data = await translateQuiet({ kind: msg.kind, texts: msg.texts || [], quality: msg.quality, context: msg.context, remember: msg.remember });
+      }
+      ref.current?.injectJavaScript(toPage({ kind: "resp", id: m.id, data }));
+    } else if (m?.kind === "set") {
+      const patch: Partial<Settings> = {};
+      for (const k of PAGE_KEYS) if (k in (m.data || {})) (patch as any)[k] = m.data[k];
+      if (Object.keys(patch).length) settings.set(patch);
+    } else if (m && onEvent) {
+      onEvent(m);
+    }
+  }, [ref, onEvent]);
+}

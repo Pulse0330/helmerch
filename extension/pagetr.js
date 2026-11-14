@@ -396,7 +396,7 @@
     return host;
   }
   function showPill() {
-    if (IN_FRAME) return;                       // товч зөвхөн үндсэн хуудсанд
+    if (IN_FRAME || window.__hmNoPill) return;  // товч зөвхөн үндсэн хуудсанд (утасны апп өөрийн товчтой)
     if (hidden || mode === "off") { if (pill) pill.remove(); clearInterval(pillT); return; }
     if (!pill) pill = makePill();
     if (!pill.isConnected) document.documentElement.appendChild(pill);

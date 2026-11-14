@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Хэлмэрч",
+    "slug": "helmerch",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "helmerch",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pulse0330.helmerch",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Ном, дэлгэцийн зургийг авч монгол руу орчуулахад камер хэрэгтэй.",
+        "NSPhotoLibraryUsageDescription": "Зургийн сангаас зураг сонгож орчуулахад хэрэгтэй."
+      }
+    },
+    "android": {
+      "package": "com.pulse0330.helmerch",
+      "adaptiveIcon": {
+        "backgroundColor": "#1565C0",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Ном, дэлгэцийн зургийг авч монгол руу орчуулахад камер хэрэгтэй.",
+          "photosPermission": "Зургийн сангаас зураг сонгож орчуулахад хэрэгтэй."
+        }
+      ],
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

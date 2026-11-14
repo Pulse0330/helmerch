@@ -47,5 +47,27 @@ if (-not $Chrome) { Bad "Chrome/Edge олдсонгүй" } else {
   Remove-Item $prof -Recurse -Force -ErrorAction SilentlyContinue
 }
 
+Write-Host "5) Утасны апп (mobile/)"
+$mob = Join-Path $root "mobile"
+if (-not (Test-Path "$mob\node_modules")) { Write-Host "      (mobile\node_modules алга — 'cd mobile; npm install' хийсний дараа шалгагдана)" } else {
+  Push-Location $mob
+  npm run --silent typecheck 2>&1 | Out-Null
+  if ($LASTEXITCODE -eq 0) { Ok "TypeScript (pagetr.js хуулагдсан)" } else { Bad "TypeScript — 'cd mobile; npx tsc --noEmit'" }
+  $env:CI = "1"; npx expo lint 2>&1 | Out-Null
+  if ($LASTEXITCODE -eq 0) { Ok "lint" } else { Bad "lint — 'cd mobile; npx expo lint'" }
+  if ($Chrome) {
+    $tmp = Join-Path $env:TEMP ("hm-mob-" + [guid]::NewGuid().ToString("N")); New-Item -ItemType Directory $tmp | Out-Null
+    foreach ($t in "bridge_page", "pdf_page") {
+      npx tsx "tests\$t.ts" "$tmp\$t.html" 2>&1 | Out-Null
+      $u = "file:///" + ("$tmp\$t.html" -replace '\\', '/')
+      $out = & $Chrome --headless=new --disable-gpu --no-first-run --user-data-dir="$tmp\prof" --virtual-time-budget=20000 --dump-dom $u 2>$null | Out-String
+      $res = [System.Net.WebUtility]::HtmlDecode([regex]::Match($out, 'data-result="([^"]*)"').Groups[1].Value)
+      if ($res -eq "PASS") { Ok "$t (WebView гүүр)" } elseif ($res) { Bad "${t}: $res" } else { Bad "${t}: үр дүн алга (PDF тест интернэт шаарддаг)" }
+    }
+    Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+  }
+  Pop-Location
+}
+
 Write-Host ""
 if ($fail) { Write-Host "$fail тест унасан" -ForegroundColor Red; exit 1 } else { Write-Host "Бүх тест амжилттай" -ForegroundColor Green }

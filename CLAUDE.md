@@ -40,6 +40,17 @@ Windows програм + Chrome өргөтгөл. Анх PMP шалгалтад 
 - **Шинэ хувилбар шалгах**: `UPDATE_REPO` (hadmal_server.py) = "owner/repo" — GitHub Releases-ийн tag `vX.Y.Z` + `Helmerch-Setup-X.Y.Z.exe` хавсралт. Хоосон бол унтраалттай.
 - **pagetr.js**: iframe дотор ч ажиллана (товч зөвхөн үндсэн хуудсанд); нуугдаж байгаад харагдсан хэсгийг (class/hidden/aria-hidden) ажиглана; «Эх»-ээс буцахад дахин тулгана; булангийн товч сайтын товчийг халхлахгүй; 📝 шалгалтын горим (`examMode`).
 
+## Утасны апп (`mobile/`, iOS + Android)
+
+Expo SDK 58 (React Native) — **`mobile/AGENTS.md`-г заавал уншина** (Expo-ийн API SDK бүрт өөрчлөгддөг, санах ойгоор бүү бич).
+- Таб: Хөтөч (апп доторх браузер) · PDF · Зураг (камер/OCR) · Миний үгс · Тохиргоо.
+- **Хөтөч нь `extension/pagetr.js`-ийг өөрчлөлтгүй ашиглана**: `scripts/sync-web.mjs` → `src/web/extension.generated.ts` (`npm start`/`typecheck` бүрд). `src/web/inject.ts`-ийн `bridgeJs` нь `chrome.runtime/storage`-ийг `ReactNativeWebView.postMessage` руу дамжуулна. pagetr.js-д `window.__hmNoPill` — утсанд булангийн товч гаргахгүй.
+- Python сервер утсанд байхгүй → орчуулгын гинж `src/lib/translator.ts` (hadmal_server.py-тай ижил логик; засвар хийвэл хоёуланг нь).
+- Түлхүүрүүд `expo-secure-store`-д (Keychain/Keystore); тохиргоо, үгс, кэш `Paths.document`-ийн JSON файлд.
+- Хязгаар: iframe дотор орчуулахгүй (Android WebView зөвхөн үндсэн хуудсанд оруулдаг); видео хадмал нь зөвхөн сайт өөрөө хадмалтай үед; бусад аппаас «Share»-ээр хүлээж авах нь development build шаардана.
+- Шалгах: `cd mobile; npx tsc --noEmit; npx expo lint` + `tests\run_tests.ps1`-ийн 5-р алхам (`mobile/tests/*_page.ts`).
+- iPhone дээр турших: `cd mobile; npx expo start` → iPhone-ий камераар QR уншуулна (Expo Go). iOS-д тараах: Apple Developer ($99/жил) + `npx eas-cli@latest build -p ios`.
+
 ## Орчуулгын гинж (чухал)
 
 1. **Хурдан шат**: хурдан AI (Gemini flash-lite / GPT mini) → бүтэхгүй бол Google (нөөц).
