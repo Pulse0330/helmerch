@@ -45,6 +45,8 @@ setTimeout(() => {
   if (!V.got || V.cues.length !== 3) bad.push("хадмал баригдсангүй (" + V.cues.length + ")");
   if (!/AI:I am honored to be with you today\\./.test(at3)) bad.push("3-р секундэд буруу хадмал: " + JSON.stringify(at3));
   if (!__events.includes("vstatus")) bad.push("төлөв апп руу очсонгүй");
+  if (!__events.includes("vready")) bad.push("бүх хадмал бэлэн болсныг мэдэгдсэнгүй");
+  if (V.preparing) bad.push("бэлдэж дуусаагүй");
   // XML (srv1) хэлбэр
   const x = new XMLHttpRequest(); x.open("GET", "data:text/xml;src=/api/timedtext," + encodeURIComponent('<transcript><text start="0.5" dur="1.5">Hello &amp; welcome</text><text start="2" dur="2">Second line</text></transcript>'));
   V.got = false;

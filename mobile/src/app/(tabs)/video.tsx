@@ -31,6 +31,10 @@ export default function Video() {
 
   const onEvent = useCallback((e: PageEvent) => {
     if (e.kind === "vstatus") setStatus(String(e.text || ""));
+    if (e.kind === "vready") {
+      setStatus(`✓ Хадмал бэлэн (${e.count} мөр)`);
+      setTimeout(() => setStatus((s) => (s.startsWith("✓") ? "" : s)), 2500);
+    }
     if (e.kind === "vnone") {
       // YouTube-д ч хадмал байхгүй видео (хадмалгүйгээр орчуулах арга алга)
       setStatus("Энэ видеонд хадмал олдсонгүй. Хадмалтай (CC) видео сонгоно уу.");

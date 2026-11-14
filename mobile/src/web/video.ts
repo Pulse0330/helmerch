@@ -42,13 +42,18 @@ export const VIDEO_BEFORE_JS = `(function(){
     for (var i = 0; i < c.length - 1; i++) if (c[i].e > c[i + 1].s) c[i].e = c[i + 1].s;
     return c;
   }
+  V.diag = { seen: 0, bytes: 0 };
   function got(url, text){
-    if (!text || V.got) return;
-    var c = parse(text);
-    if (c.length < 2) return;
+    if (V.got) return;
+    V.diag.seen++; V.diag.bytes = (text || "").length;
+    var c = text ? parse(text) : [];
+    if (c.length < 2) {
+      // оношлогоо: хадмалын файл ирсэн ч хоосон эсвэл задарсангүй (дээд мөрөнд харагдана)
+      post({ kind: "vstatus", text: text ? "Хадмалын файл задарсангүй (" + text.length + " тэмдэгт) — шууд орчуулж байна" : "Хадмал хоосон ирлээ — шууд орчуулж байна" });
+      return;
+    }
     V.got = true; V.cues = tidy(c);
     var lm = /[?&]lang=([\\w-]+)/.exec(url); V.lang = lm ? lm[1] : "";
-    post({ kind: "vstatus", text: "Хадмал олдлоо (" + c.length + " мөр) — урьдчилан орчуулж байна…" });
     translateAll();
   }
 
@@ -85,22 +90,31 @@ export const VIDEO_BEFORE_JS = `(function(){
         context: "Video subtitles: " + document.title.slice(0, 100) }, function(r){ res(r || {}); });
     });
   }
+  // Бүх хадмалыг ЭХЛЭЭД орчуулж дуусгаад үзүүлнэ: видеог түр зогсоож, явцыг харуулж, дуусмагц үргэлжлүүлнэ
+  // (тоглуулж байх үед хоцрохгүй). Дараа нь AI-аар ар талд сайжруулна.
   async function translateAll(){
-    var c = V.cues, N = 30;
-    var v = document.querySelector("video"), now = v ? v.currentTime : 0;
-    var start = Math.max(0, c.findIndex(function(x){ return x.e >= now; }));
-    var order = [];
-    for (var i = start; i < c.length; i += N) order.push(i);
-    for (var k = 0; k < start; k += N) order.push(k);
-    for (var pass = 0; pass < 2; pass++) {               // 0 = хурдан, 1 = AI (мэргэжлийн)
-      for (var o = 0; o < order.length; o++) {
-        var from = order[o], part = c.slice(from, from + N), texts = part.map(function(x){ return x.t; });
-        var r = await send(texts, pass === 1);
-        if (!r.results) { await new Promise(function(z){ setTimeout(z, 3000); }); continue; }
-        r.results.forEach(function(x, j){ if (x.mn && (pass === 1 || !V.mn[part[j].t])) V.mn[part[j].t] = x.mn; });
-        if (pass === 0 && o === 0) post({ kind: "vstatus", text: "" });
-        if (pass === 1 && r.ai === false) break;            // AI түлхүүргүй — хурдан орчуулга хэвээр
-      }
+    var c = V.cues, N = 60;
+    var v = document.querySelector("video"), wasPlaying = v && !v.paused;
+    var holdPlay = function(){ var x = document.querySelector("video"); if (V.preparing && x && !x.paused) x.pause(); };
+    V.preparing = true;
+    if (v) { v.pause(); v.addEventListener("play", holdPlay); }
+    var uniq = [], seen = {};
+    c.forEach(function(x){ if (!seen[x.t]) { seen[x.t] = 1; uniq.push(x.t); } });
+    for (var i = 0; i < uniq.length; i += N) {
+      post({ kind: "vstatus", text: "Хадмал бэлдэж байна… " + Math.round(100 * i / uniq.length) + "% (" + uniq.length + " мөр)" });
+      var part = uniq.slice(i, i + N), r = {};
+      for (var a = 0; a < 3 && !r.results; a++) { r = await send(part, false); if (!r.results) await new Promise(function(z){ setTimeout(z, 1500); }); }
+      (r.results || []).forEach(function(x, j){ if (x.mn) V.mn[part[j]] = x.mn; });
+    }
+    V.preparing = false;
+    if (v) { v.removeEventListener("play", holdPlay); if (wasPlaying || v.currentTime > 0) v.play().catch(function(){}); }
+    post({ kind: "vstatus", text: "" });
+    post({ kind: "vready", count: uniq.length });
+    // AI-аар сайжруулах (ар талд, түлхүүр байвал) — бэлэн болсон мөрийг шууд сольно
+    for (var k = 0; k < uniq.length; k += 30) {
+      var q = uniq.slice(k, k + 30), rq = await send(q, true);
+      if (!rq.results || rq.ai === false) break;
+      rq.results.forEach(function(x, j){ if (x.mn) V.mn[q[j]] = x.mn; });
     }
   }
 
@@ -190,6 +204,11 @@ export const VIDEO_BEFORE_JS = `(function(){
     // 10 сек тоглуулаад ч хадмал олдохгүй бол CC асаахыг сануулна
     if (!v.paused) played += 0.2;
     if (!hinted && played > 10 && !V.got && !liveTold) { hinted = true; post({ kind: "vnone" }); }
+    // бүтэн хадмал баригдаагүй, шууд орчуулж байгаа бол яагаад гэдгийг нэг удаа хэлнэ (оношлогоо)
+    if (!hinted && played > 8 && !V.got && liveTold) {
+      hinted = true;
+      post({ kind: "vstatus", text: "Бүтэн хадмал баригдсангүй (хүсэлт " + V.diag.seen + ", " + V.diag.bytes + " тэмдэгт) — мөр мөрөөр орчуулж байна" });
+    }
     if (!box) {
       box = document.createElement("hm-sub");
       box.style.cssText = "position:fixed;z-index:2147483646;left:0;right:0;pointer-events:none;text-align:center;padding:0 10px";
