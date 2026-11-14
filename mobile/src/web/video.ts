@@ -118,6 +118,7 @@ export const VIDEO_BEFORE_JS = `(function(){
       var part = uniq.slice(i, i + N), r = {};
       for (var a = 0; a < 3 && !r.results; a++) { r = await send(part, false); if (!r.results) await new Promise(function(z){ setTimeout(z, 1500); }); }
       (r.results || []).forEach(function(x, j){ if (x.mn) V.mn[part[j]] = x.mn; });
+      if (V.fill) V.fill();
     }
     V.preparing = false;
     if (v) { v.removeEventListener("play", holdPlay); if (wasPlaying || v.currentTime > 0) v.play().catch(function(){}); }
@@ -128,6 +129,7 @@ export const VIDEO_BEFORE_JS = `(function(){
       var q = uniq.slice(k, k + 30), rq = await send(q, true);
       if (!rq.results || rq.ai === false) break;
       rq.results.forEach(function(x, j){ if (x.mn) V.mn[q[j]] = x.mn; });
+      if (V.fill) V.fill();                               // бүтэн дэлгэцийн track-ийн мөрүүдийг ч сольно
     }
   }
 
@@ -216,15 +218,83 @@ export const VIDEO_BEFORE_JS = `(function(){
   var css = document.createElement("style");
   css.textContent = HIDE.split(", ").map(function(s){ return "html.hm-sub-on:not(.hm-both) " + s; }).join(", ") + "{opacity:0!important}";
   document.documentElement.classList.add("hm-sub-on");
+  // --- Видеоны text track: (1) YouTube iPhone-д хадмалаа видеонд track болгон залгадаг — түүнээс БҮХ мөрийг авна;
+  // (2) монгол хадмалыг ч track болгон залгана — iPhone-ий бүтэн дэлгэцийн тоглуулагч хуудсан дээрх давхаргыг харуулдаггүй,
+  // харин track-ийг харуулдаг. Апп дотор (жижиг дэлгэцэнд) давхаргаар харуулж, монгол track-ийг нууна (давхар гарахгүй).
+  var mnTrack = null, mnVideo = null, cueMap = {}, liveCue = null;
+  function isFull(v){ return !!(v.webkitDisplayingFullscreen || document.fullscreenElement || document.webkitFullscreenElement); }
+  function ensureTrack(v){
+    if (mnVideo === v && mnTrack) return mnTrack;
+    try { mnTrack = v.addTextTrack("subtitles", "Монгол", "mn"); } catch (e) { mnTrack = null; return null; }
+    mnVideo = v; cueMap = {}; liveCue = null; mnTrack.mode = "hidden";
+    fillTrack();
+    return mnTrack;
+  }
+  function fillTrack(){
+    if (!mnTrack || typeof VTTCue === "undefined") return;
+    V.cues.forEach(function(c, i){
+      var mn = V.mn[c.t];
+      if (!mn) return;
+      var q = cueMap[i];
+      if (q) { if (q.text !== mn) q.text = mn; return; }
+      try { q = new VTTCue(c.s, Math.max(c.e, c.s + 0.6), mn); q.line = -3; mnTrack.addCue(q); cueMap[i] = q; } catch (e) {}
+    });
+  }
+  V.fill = fillTrack;
+  // YouTube-ийн track-аас бүх мөрийг авах (хүсэлт баригдаагүй үед)
+  function harvest(v){
+    if (V.got) return;
+    var tt = v.textTracks || [];
+    for (var i = 0; i < tt.length; i++) {
+      var tr = tt[i];
+      if (tr === mnTrack || !/subtitles|captions/.test(tr.kind)) continue;
+      if (tr.mode === "disabled") { try { tr.mode = "hidden"; } catch (e) {} }   // ачаалуулна, харуулахгүй
+      if (!tr.cues || tr.cues.length < 3) continue;
+      var c = [];
+      for (var j = 0; j < tr.cues.length; j++) {
+        var q = tr.cues[j], s = (q.text || "").replace(/<[^>]+>/g, "").replace(/\\s+/g, " ").trim();
+        if (s) c.push({ s: q.startTime, e: q.endTime, t: s });
+      }
+      if (c.length > 2) { V.got = true; V.cues = tidy(c); translateAll(); return; }
+    }
+  }
+  // YouTube-ийн track-ийн одоо гарч буй мөр (бүтэн дэлгэцэнд DOM хадмал байхгүй)
+  function trackLine(v){
+    var tt = v.textTracks || [];
+    for (var i = 0; i < tt.length; i++) {
+      var tr = tt[i];
+      if (tr === mnTrack || !tr.activeCues || !tr.activeCues.length) continue;
+      var s = [].map.call(tr.activeCues, function(q){ return (q.text || "").replace(/<[^>]+>/g, ""); }).join(" ").replace(/\\s+/g, " ").trim();
+      if (s) return s;
+    }
+    return "";
+  }
+
   var box = null, played = 0, hinted = false, blank = 0, blankTold = false;
   function draw(){
     var v = mainVideo();
     if (!css.isConnected && document.head) document.head.appendChild(css);
-    if (!v || !V.on) { if (box) box.innerHTML = ""; return; }
+    if (!v || !V.on) { if (box) box.innerHTML = ""; if (mnTrack && mnTrack.mode !== "hidden") mnTrack.mode = "hidden"; return; }
+    harvest(v);
+    var full = isFull(v);
+    ensureTrack(v);
     var t = v.currentTime, cue = null;
     for (var i = 0; i < V.cues.length; i++) { if (V.cues[i].s <= t && t < V.cues[i].e + 0.3) cue = V.cues[i]; if (V.cues[i].s > t) break; }
     var mn = cue ? (V.mn[cue.t] || "") : "";
-    if (!mn) { var dc = domCaption(v); mn = dc ? liveMn(dc) : ""; if (!dc) lastMn = ""; }
+    if (!mn) { var dc = domCaption(v) || trackLine(v); mn = dc ? liveMn(dc) : ""; if (!dc) lastMn = ""; }
+    // бүтэн дэлгэц: монгол track-ийг харуулж, YouTube-ийн англи track-ийг нууна (апп дотор: эсрэгээрээ)
+    if (mnTrack) {
+      var trackMode = full && !V.preparing ? "showing" : "hidden";
+      if (mnTrack.mode !== trackMode) mnTrack.mode = trackMode;
+      if (full) {
+        var tt = v.textTracks;
+        for (var k = 0; k < tt.length; k++) if (tt[k] !== mnTrack && tt[k].mode === "showing" && !V.both) tt[k].mode = "hidden";
+        // бүтэн хадмал байхгүй (мөр мөрөөр) үед одоогийн мөрийг track-д түр нэмнэ
+        if (!V.got && mn && typeof VTTCue !== "undefined" && (!liveCue || liveCue.text !== mn)) {
+          try { if (liveCue) mnTrack.removeCue(liveCue); liveCue = new VTTCue(t, t + 4, mn); liveCue.line = -3; mnTrack.addCue(liveCue); } catch (e) {}
+        }
+      }
+    }
     // оношлогоо: хадмал бэлэн ч 5 сек тоглуулахад нэг ч мөр таарахгүй бол цагийг харуулна
     if (V.got && !V.preparing && !v.paused) blank = mn ? 0 : blank + 0.2;
     if (!blankTold && blank > 5 && V.cues.length) {
@@ -248,6 +318,7 @@ export const VIDEO_BEFORE_JS = `(function(){
     var r = v.getBoundingClientRect();
     // видеоны доод хэсэгт; видео харагдахгүй байвал дэлгэцийн доод хэсэгт
     box.style.top = (r.height > 60 && r.bottom > 0 ? Math.min(innerHeight - 90, Math.max(0, r.bottom - 70)) : innerHeight * 0.62) + "px";
+    if (full) mn = "";                                    // бүтэн дэлгэцэнд track харуулна, давхарга хэрэггүй
     box.innerHTML = mn ? '<span style="background:rgba(0,0,0,.72);color:#fff;font:600 16px/1.4 -apple-system,system-ui,sans-serif;' +
       'padding:3px 8px;border-radius:6px;-webkit-box-decoration-break:clone;box-decoration-break:clone">' +
       mn.replace(/[&<>]/g, function(c){ return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }) + "</span>" : "";
