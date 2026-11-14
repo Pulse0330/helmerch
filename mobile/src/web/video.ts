@@ -43,6 +43,19 @@ export const VIDEO_BEFORE_JS = `(function(){
     return c;
   }
   V.diag = { seen: 0, bytes: 0 };
+  // Гол видео: хуудсанд хэд хэдэн <video> (зар, жижиг тоглуулагч) байж болно — эхнийх биш, тоглуулагчийнхыг эсвэл хамгийн томыг
+  function mainVideo(){
+    var v = document.querySelector("#movie_player video, video.html5-main-video, #player video");
+    var r0 = v && v.getBoundingClientRect();
+    if (v && r0.width > 50) return v;
+    var best = null, area = 0;
+    document.querySelectorAll("video").forEach(function(x){
+      var r = x.getBoundingClientRect(), a = r.width * r.height;
+      if (a > area) { area = a; best = x; }
+    });
+    return best || v;
+  }
+  window.__hmMainVideo = mainVideo;
   function got(url, text){
     if (V.got) return;
     V.diag.seen++; V.diag.bytes = (text || "").length;
@@ -94,8 +107,8 @@ export const VIDEO_BEFORE_JS = `(function(){
   // (тоглуулж байх үед хоцрохгүй). Дараа нь AI-аар ар талд сайжруулна.
   async function translateAll(){
     var c = V.cues, N = 60;
-    var v = document.querySelector("video"), wasPlaying = v && !v.paused;
-    var holdPlay = function(){ var x = document.querySelector("video"); if (V.preparing && x && !x.paused) x.pause(); };
+    var v = mainVideo(), wasPlaying = v && !v.paused;
+    var holdPlay = function(){ var x = mainVideo(); if (V.preparing && x && !x.paused) x.pause(); };
     V.preparing = true;
     if (v) { v.pause(); v.addEventListener("play", holdPlay); }
     var uniq = [], seen = {};
@@ -203,15 +216,22 @@ export const VIDEO_BEFORE_JS = `(function(){
   var css = document.createElement("style");
   css.textContent = HIDE.split(", ").map(function(s){ return "html.hm-sub-on:not(.hm-both) " + s; }).join(", ") + "{opacity:0!important}";
   document.documentElement.classList.add("hm-sub-on");
-  var box = null, played = 0, hinted = false;
+  var box = null, played = 0, hinted = false, blank = 0, blankTold = false;
   function draw(){
-    var v = document.querySelector("video");
+    var v = mainVideo();
     if (!css.isConnected && document.head) document.head.appendChild(css);
     if (!v || !V.on) { if (box) box.innerHTML = ""; return; }
     var t = v.currentTime, cue = null;
     for (var i = 0; i < V.cues.length; i++) { if (V.cues[i].s <= t && t < V.cues[i].e + 0.3) cue = V.cues[i]; if (V.cues[i].s > t) break; }
     var mn = cue ? (V.mn[cue.t] || "") : "";
     if (!mn) { var dc = domCaption(v); mn = dc ? liveMn(dc) : ""; if (!dc) lastMn = ""; }
+    // оношлогоо: хадмал бэлэн ч 5 сек тоглуулахад нэг ч мөр таарахгүй бол цагийг харуулна
+    if (V.got && !V.preparing && !v.paused) blank = mn ? 0 : blank + 0.2;
+    if (!blankTold && blank > 5 && V.cues.length) {
+      blankTold = true;
+      var nxt = V.cues.find(function(c){ return c.s > t; });
+      post({ kind: "vstatus", text: "Хадмал таарсангүй: видео " + t.toFixed(1) + "с, мөр " + V.cues.length + ", эхний " + V.cues[0].s.toFixed(1) + "с, дараагийн " + (nxt ? nxt.s.toFixed(1) + "с" : "—") });
+    }
     // 10 сек тоглуулаад ч хадмал олдохгүй бол CC асаахыг сануулна
     if (!v.paused) played += 0.2;
     if (!hinted && played > 10 && !V.got && !liveTold) { hinted = true; post({ kind: "vnone" }); }
@@ -226,7 +246,8 @@ export const VIDEO_BEFORE_JS = `(function(){
       document.documentElement.appendChild(box);
     }
     var r = v.getBoundingClientRect();
-    box.style.top = Math.max(0, r.bottom - 70) + "px";
+    // видеоны доод хэсэгт; видео харагдахгүй байвал дэлгэцийн доод хэсэгт
+    box.style.top = (r.height > 60 && r.bottom > 0 ? Math.min(innerHeight - 90, Math.max(0, r.bottom - 70)) : innerHeight * 0.62) + "px";
     box.innerHTML = mn ? '<span style="background:rgba(0,0,0,.72);color:#fff;font:600 16px/1.4 -apple-system,system-ui,sans-serif;' +
       'padding:3px 8px;border-radius:6px;-webkit-box-decoration-break:clone;box-decoration-break:clone">' +
       mn.replace(/[&<>]/g, function(c){ return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }) + "</span>" : "";

@@ -30,6 +30,7 @@ window.ReactNativeWebView = { postMessage(s) {
 <script>${bridgeJs({ pageMode: "off", subs: false, settings: { quality: true } })}</script>
 <script>${VIDEO_BEFORE_JS}</script>
 </head><body style="margin:0">
+<video id="decoy" width="40" height="20" style="display:block"></video>
 <div style="position:relative"><video id="v" width="320" height="180" style="display:block;background:#000"></video>
 <div class="ytp-caption-window-container" style="position:absolute;left:0;right:0;bottom:10px"><span class="ytp-caption-segment" id="cc"></span></div></div>
 <script>
